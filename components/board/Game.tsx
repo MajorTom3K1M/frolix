@@ -6,7 +6,7 @@ import { HTML5Backend } from "react-dnd-html5-backend"
 import { TouchBackend } from "react-dnd-touch-backend"
 import { Box, Typography, Button } from "@mui/material"
 import Board from "@/components/board/Board";
-import Tray from "@/components/tray/Tray";
+import Tray, { CustomDragLayer } from "@/components/tray/Tray";
 import { useMobile } from "@/hooks/useMobile"
 
 const LETTER_VALUES: Record<string, number> = {
@@ -205,6 +205,7 @@ export default function ScrabbleGame() {
 
   return (
     <DndProvider backend={isMobile ? TouchBackend : HTML5Backend}>
+      <CustomDragLayer />
       <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
         <Box
           sx={{

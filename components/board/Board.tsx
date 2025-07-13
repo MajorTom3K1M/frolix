@@ -2,7 +2,7 @@
 
 import { Box, Paper, Typography } from "@mui/material"
 import { Star } from "lucide-react"
-import { useDrop } from "react-dnd"
+import { ConnectableElement, useDrop } from "react-dnd"
 import { useCallback } from "react"
 
 // Define the types of special squares on the board
@@ -432,6 +432,7 @@ export default function Board({ boardTiles, onTileDrop, placedWords }: ScrabbleB
                     <Box
                         key={position}
                         // ref={drop}
+                        ref={(node) => { if (node) drop(node as ConnectableElement); }}
                         sx={{
                             backgroundColor: squareColors[squareType],
                             display: "flex",
