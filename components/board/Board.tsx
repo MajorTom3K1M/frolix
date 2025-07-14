@@ -1,9 +1,7 @@
 "use client"
 
 import { Box, Paper, Typography } from "@mui/material"
-import { Star } from "lucide-react"
-import { ConnectableElement, useDrop } from "react-dnd"
-import { useCallback } from "react"
+import { BoardCell } from "@/components/board/BoardCell"
 
 // Define the types of special squares on the board
 type SquareType =
@@ -273,26 +271,6 @@ const boardLayout: SquareType[][] = [
     ],
 ]
 
-// Color mapping for different square types
-const squareColors: Record<SquareType, string> = {
-    normal: "#f5e9d5", // light beige
-    dl: "#a6d1fa", // light blue
-    tl: "#4a9ced", // darker blue
-    dw: "#f5b7b1", // light red
-    tw: "#e74c3c", // darker red
-    star: "#f5b7b1", // same as double word
-}
-
-// Text labels for special squares
-const squareLabels: Record<SquareType, string> = {
-    normal: "",
-    dl: "DL",
-    tl: "TL",
-    dw: "DW",
-    tw: "TW",
-    star: "",
-}
-
 interface ScrabbleBoardProps {
     boardTiles: Record<string, any>
     onTileDrop: (tile: any, position: string) => void
@@ -308,20 +286,13 @@ export default function Board({ boardTiles, onTileDrop, placedWords }: ScrabbleB
         return Math.min(viewportWidth - 40, 600)
     }
 
-    const boardSize = calculateBoardSize()
-    const cellSize = boardSize / 15
+    const boardSize = calculateBoardSize();
+    const cellSize = boardSize / 15;
 
     // Check if a position is part of a placed word
     const getWordForPosition = (position: string) => {
-        return placedWords.find((word) => word.positions.includes(position))
-    }
-
-    const handleDrop = useCallback(
-        (item: any, position: string) => {
-            onTileDrop(item, position)
-        },
-        [onTileDrop],
-    )
+        return placedWords.find((word) => word.positions.includes(position));
+    };
 
     return (
         <Paper
@@ -408,95 +379,25 @@ export default function Board({ boardTiles, onTileDrop, placedWords }: ScrabbleB
 
             {/* Render board squares */}
             {boardLayout.flat().map((squareType, index) => {
-                const row = Math.floor(index / 15)
-                const col = index % 15
-                const isCenter = squareType === "star"
-                const position = `${row}-${col}`
-                const tile = boardTiles[position]
-                const word = getWordForPosition(position)
-
-                // Set up drop target for each square
-                const canDrop = !tile
-                const [{ isOver }, drop] = useDrop({
-                    accept: "LETTER",
-                    drop: (item: any) => {
-                        handleDrop(item, position)
-                    },
-                    canDrop: () => canDrop, // Can only drop if no tile is present
-                    collect: (monitor) => ({
-                        isOver: !!monitor.isOver(),
-                    }),
-                })
+                const row = Math.floor(index / 15);
+                const col = index % 15;
+                const position = `${row}-${col}`;
+                const tile = boardTiles[position];
+                const word = getWordForPosition(position);
+                const canDrop = !tile;
 
                 return (
-                    <Box
+                    <BoardCell
                         key={position}
-                        // ref={drop}
-                        ref={(node) => { if (node) drop(node as ConnectableElement); }}
-                        sx={{
-                            backgroundColor: squareColors[squareType],
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            position: "relative",
-                            cursor: tile ? "default" : "pointer",
-                            transition: "all 0.2s",
-                            opacity: isOver && canDrop ? 0.7 : 1,
-                            width: "100%",
-                            height: "100%",
-                            border: isOver && canDrop ? "2px dashed #4caf50" : "none",
-                        }}
-                    >
-                        {isCenter ? (
-                            <Star size={cellSize * 0.5} color="#8d6e63" />
-                        ) : (
-                            <Typography
-                                variant="caption"
-                                sx={{
-                                    fontSize: cellSize * 0.3,
-                                    fontWeight: "bold",
-                                    color: squareType === "normal" ? "transparent" : "#000000aa",
-                                }}
-                            >
-                                {squareLabels[squareType]}
-                            </Typography>
-                        )}
-
-                        {tile && (
-                            <Box
-                                sx={{
-                                    position: "absolute",
-                                    top: "2px",
-                                    left: "2px",
-                                    right: "2px",
-                                    bottom: "2px",
-                                    backgroundColor: "#f0e68c", // tile color
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    borderRadius: "2px",
-                                    boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
-                                    zIndex: 5,
-                                }}
-                            >
-                                <Typography variant="body2" sx={{ fontWeight: "bold" }}>
-                                    {tile.letter}
-                                </Typography>
-                                <Typography
-                                    variant="caption"
-                                    sx={{
-                                        position: "absolute",
-                                        bottom: "2px",
-                                        right: "2px",
-                                        fontSize: "0.6rem",
-                                    }}
-                                >
-                                    {tile.value}
-                                </Typography>
-                            </Box>
-                        )}
-                    </Box>
-                )
+                        squareType={squareType}
+                        position={position}
+                        cellSize={cellSize}
+                        tile={tile}
+                        word={word}
+                        canDrop={canDrop}
+                        onDrop={onTileDrop}
+                    />
+                );
             })}
         </Paper>
     )

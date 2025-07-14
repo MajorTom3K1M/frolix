@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useTransition } from "react"
 import { DndProvider } from "react-dnd"
 import { HTML5Backend } from "react-dnd-html5-backend"
 import { TouchBackend } from "react-dnd-touch-backend"
@@ -65,22 +65,19 @@ export default function ScrabbleGame() {
     setTrayTiles(generateRandomLetters(7))
   }, [])
 
-  // Handle tile placement on the board
-  const handleTileDrop = (tile: any, position: string) => {
+  const handleTileDrop = useCallback((tile: any, position: string) => {
     // Remove the tile from the tray
-    setTrayTiles((prev) => prev.filter((t) => t.id !== tile.id))
-
+    setTrayTiles(prev => prev.filter(t => t.id !== tile.id))
     // Add the tile to the board
-    setBoardTiles((prev) => ({
+    setBoardTiles(prev => ({
       ...prev,
       [position]: { ...tile, position },
     }))
+  }, [setTrayTiles, setBoardTiles])
 
-    // Check for words and update score
-    setTimeout(() => {
-      detectWordsAndUpdateScore()
-    }, 100)
-  }
+  useEffect(() => {
+    detectWordsAndUpdateScore()
+  }, [boardTiles])
 
   // Refill the tray with new tiles
   const refillTray = () => {

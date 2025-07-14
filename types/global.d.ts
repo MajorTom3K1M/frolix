@@ -10,3 +10,11 @@ export const colorMap: Record<ChipColor, string> = {
     teal: "bg-teal-500 border-teal-600",
     pink: "bg-pink-500 border-pink-600",
 }
+
+export type SquareType =
+    | "normal"
+    | "dl"
+    | "tl"
+    | "dw"
+    | "tw"
+    | "star";

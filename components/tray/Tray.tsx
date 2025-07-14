@@ -86,9 +86,9 @@ const DraggableLetterTile = ({ tile }: { tile: LetterTile }) => {
         }),
     }))
 
-    // useEffect(() => {
-    //     preview(getEmptyImage(), { captureDraggingState: true })
-    // }, [preview])
+    useEffect(() => {
+        preview(getEmptyImage(), { captureDraggingState: true })
+    }, [preview])
 
     return (
         <Box
