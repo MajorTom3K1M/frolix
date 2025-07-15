@@ -309,50 +309,63 @@ export default function Board({ boardTiles, onTileDrop, placedWords }: ScrabbleB
                 position: "relative",
             }}
         >
+            {/* Render board squares */}
+            {boardLayout.flat().map((squareType, index) => {
+                const row = Math.floor(index / 15);
+                const col = index % 15;
+                const position = `${row}-${col}`;
+                const tile = boardTiles[position];
+                const word = getWordForPosition(position);
+                const canDrop = !tile;
+
+                return (
+                    <BoardCell
+                        key={position}
+                        squareType={squareType}
+                        position={position}
+                        cellSize={cellSize}
+                        tile={tile}
+                        word={word}
+                        canDrop={canDrop}
+                        onDrop={onTileDrop}
+                    />
+                );
+            })}
+
             {/* Render word borders and score badges */}
             {placedWords.map((word, wordIndex) => {
-                // Calculate the bounding box for the word
-                const positions = word.positions.map((pos: string) => {
-                    const [row, col] = pos.split("-").map(Number)
-                    return { row, col }
-                })
+                const coords = word.positions.map((pos: string) =>
+                    pos.split("-").map(Number)
+                ) as [number, number][];
 
-                const minRow = Math.min(...positions.map((p: any) => p.row))
-                const maxRow = Math.max(...positions.map((p: any) => p.row))
-                const minCol = Math.min(...positions.map((p: any) => p.col))
-                const maxCol = Math.max(...positions.map((p: any) => p.col))
+                const rows = coords.map(([r]) => r)
+                const cols = coords.map(([, c]) => c);
 
-                // Calculate position and size for the border
-                // Account for gaps between cells (1px) and padding (2px)
-                const cellWithGap = cellSize + 1
-                const left = minCol * cellWithGap + 2
-                const top = minRow * cellWithGap + 2
+                const minRow = Math.min(...rows), maxRow = Math.max(...rows);
+                const minCol = Math.min(...cols), maxCol = Math.max(...cols);
+
+                const isHorizontal = minRow === maxRow;
+                const cellWithGap = cellSize
                 const width = (maxCol - minCol + 1) * cellWithGap - 1
                 const height = (maxRow - minRow + 1) * cellWithGap - 1
 
-                // Determine if word is horizontal or vertical
-                const isHorizontal = minRow === maxRow
-                const isVertical = minCol === maxCol
-
-                // Position the score badge based on word orientation
                 const badgePosition = isHorizontal ? { right: -10, top: -10 } : { right: -10, bottom: -10 }
 
+                const key = `word-${wordIndex}`
                 return (
                     <Box
-                        key={`word-${wordIndex}`}
+                        key={key}
                         sx={{
                             position: "absolute",
-                            left: `${left}px`,
-                            top: `${top}px`,
                             width: `${width}px`,
                             height: `${height}px`,
+                            gridArea: `${minRow + 1}/${minCol + 1}/${maxRow + 2}/${maxCol + 2}`,
                             border: "2px solid #4caf50",
-                            borderRadius: "4px",
+                            borderRadius: "6px",
                             pointerEvents: "none",
                             zIndex: 10,
                         }}
                     >
-                        {/* Score badge */}
                         <Box
                             sx={{
                                 position: "absolute",
@@ -375,29 +388,6 @@ export default function Board({ boardTiles, onTileDrop, placedWords }: ScrabbleB
                         </Box>
                     </Box>
                 )
-            })}
-
-            {/* Render board squares */}
-            {boardLayout.flat().map((squareType, index) => {
-                const row = Math.floor(index / 15);
-                const col = index % 15;
-                const position = `${row}-${col}`;
-                const tile = boardTiles[position];
-                const word = getWordForPosition(position);
-                const canDrop = !tile;
-
-                return (
-                    <BoardCell
-                        key={position}
-                        squareType={squareType}
-                        position={position}
-                        cellSize={cellSize}
-                        tile={tile}
-                        word={word}
-                        canDrop={canDrop}
-                        onDrop={onTileDrop}
-                    />
-                );
             })}
         </Paper>
     )

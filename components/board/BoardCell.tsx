@@ -41,7 +41,9 @@ const squareLabels: Record<SquareType, string> = {
     star: "",
 };
 
-function Cell({ squareType, position, cellSize, tile, word, canDrop, onDrop }: BoardCellProps) {
+function Cell({ 
+    squareType, position, cellSize, tile, word, canDrop, onDrop 
+}: Readonly<BoardCellProps>) {
     const handleDrop = useCallback(
         (item: LetterTile) => {
             onDrop(item, position);
@@ -73,7 +75,7 @@ function Cell({ squareType, position, cellSize, tile, word, canDrop, onDrop }: B
                 justifyContent: "center",
                 position: "relative",
                 cursor: tile ? "default" : "pointer",
-                transition: "all 0.2s",
+                // transition: "all 0.2s",
                 opacity: isOver && canDrop ? 0.7 : 1,
                 width: "100%",
                 height: "100%",
