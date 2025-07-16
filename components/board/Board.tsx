@@ -349,7 +349,8 @@ export default function Board({ boardTiles, onTileDrop, placedWords }: ScrabbleB
                 const width = (maxCol - minCol + 1) * cellWithGap - 1
                 const height = (maxRow - minRow + 1) * cellWithGap - 1
 
-                const badgePosition = isHorizontal ? { right: -10, top: -10 } : { right: -10, bottom: -10 }
+                // const badgePosition = isHorizontal ? { right: -10, top: -10 } : { right: -10, top: -10 }
+                const badgePosition = { right: -10, top: -10 };
 
                 const key = `word-${wordIndex}`
                 return (

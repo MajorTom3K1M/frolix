@@ -98,9 +98,6 @@ export default function ScrabbleGame() {
 
   // Detect words and calculate score
   const detectWordsAndUpdateScore = () => {
-    // This is a simplified version - in a real game, you'd need more complex word detection
-    // For this demo, we'll just group adjacent tiles as "words"
-
     const positions = Object.keys(boardTiles)
     const visited = new Set<string>()
     const words: any[] = []
@@ -156,6 +153,8 @@ export default function ScrabbleGame() {
       }
     }
 
+    visited.clear()
+    
     // Then, find vertical words
     for (let col = 0; col < 15; col++) {
       let currentWord: any = null
