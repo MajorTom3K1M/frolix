@@ -1,16 +1,15 @@
-"use client";
-
-import { useTransition, useCallback } from "react";
+import { useCallback } from "react";
 import { useDrop, DropTargetMonitor, ConnectableElement } from "react-dnd";
 import { Box, Typography } from "@mui/material";
 import { SquareType } from "@/types/global";
 import { Star } from "lucide-react";
 import React from "react";
+import Tile from "../tile/Tile";
 
 interface LetterTile {
-  id: string;
-  letter: string;
-  value: number;
+    id: string;
+    letter: string;
+    value: number;
 }
 
 interface BoardCellProps {
@@ -41,8 +40,17 @@ const squareLabels: Record<SquareType, string> = {
     star: "",
 };
 
-function Cell({ 
-    squareType, position, cellSize, tile, word, canDrop, onDrop 
+const TILE_BASE_STYLES: React.CSSProperties = {
+    position: "absolute",
+    top: "2px",
+    left: "2px",
+    right: "2px",
+    bottom: "2px",
+    zIndex: 5,
+}
+
+function Cell({
+    squareType, position, cellSize, tile, word, canDrop, onDrop
 }: Readonly<BoardCellProps>) {
     const handleDrop = useCallback(
         (item: LetterTile) => {
@@ -63,11 +71,16 @@ function Cell({
         [handleDrop, canDrop]
     );
 
+    const refCallback = useCallback(
+        (el: ConnectableElement | null) => { if (el) dropRef(el); },
+        [dropRef]
+    );
+
     const isCenter = squareType === "star";
 
     return (
         <Box
-            ref={(node) => { if (node) dropRef(node as ConnectableElement); }}
+            ref={refCallback}
             sx={{
                 backgroundColor: squareColors[squareType],
                 display: "flex",
@@ -98,37 +111,10 @@ function Cell({
             )}
 
             {tile && (
-                <Box
-                    sx={{
-                        position: "absolute",
-                        top: "2px",
-                        left: "2px",
-                        right: "2px",
-                        bottom: "2px",
-                        backgroundColor: "#f0e68c",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        borderRadius: "2px",
-                        boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
-                        zIndex: 5,
-                    }}
-                >
-                    <Typography variant="body2" sx={{ fontWeight: "bold" }}>
-                        {tile.letter}
-                    </Typography>
-                    <Typography
-                        variant="caption"
-                        sx={{
-                            position: "absolute",
-                            bottom: "2px",
-                            right: "2px",
-                            fontSize: "0.6rem",
-                        }}
-                    >
-                        {tile.value}
-                    </Typography>
-                </Box>
+                <Tile
+                    tile={tile}
+                    styles={TILE_BASE_STYLES}
+                />
             )}
         </Box>
     );
