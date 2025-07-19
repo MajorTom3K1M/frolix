@@ -1,22 +1,18 @@
 import { LetterTile } from "@/types/tiles";
 import { SxProps } from "@mui/material";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { ConnectableElement, useDrag } from "react-dnd";
 import { getEmptyImage } from "react-dnd-html5-backend";
 import Tile from "@/components/tile/Tile";
 
-const TILE_DRAG_STYLES: SxProps = {
-    cursor: "grab",
-    // opacity: 1,
-    // opacity: isDragging ? 0.5 : 1,
-    margin: "0 4px",
-    transition: "transform 0.2s",
-    "&:hover": {
-        transform: "translateY(-5px)",
-    },
+interface DraggableTileProps {
+    tile: LetterTile;
+    styles?: SxProps;
+    width?: number;
+    height?: number;
 }
 
-const DraggableLetterTile = ({ tile }: { tile: LetterTile }) => {
+const DraggableTile = ({ tile, styles, width, height }: DraggableTileProps) => {
     const [{ isDragging }, drag, preview] = useDrag(() => ({
         type: "LETTER",
         item: tile,
@@ -36,15 +32,20 @@ const DraggableLetterTile = ({ tile }: { tile: LetterTile }) => {
         [drag]
     );
 
+    const mergedStyles: SxProps = useMemo(() => ({
+        ...styles,
+        opacity: isDragging ? 0 : 1,
+    }), [styles, isDragging]);
+
     return (
         <Tile
-            width={40}
-            height={40}
+            width={width}
+            height={height}
             ref={dragRef}
             tile={tile}
-            styles={TILE_DRAG_STYLES}
+            styles={mergedStyles}
         />
     );
 };
 
-export default React.memo(DraggableLetterTile);
+export default React.memo(DraggableTile);

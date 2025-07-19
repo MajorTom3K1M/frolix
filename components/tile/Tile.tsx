@@ -1,12 +1,12 @@
 import { LetterTile } from "@/types/tiles";
-import { Box, Typography } from "@mui/material";
+import { Box, SxProps, Typography } from "@mui/material";
 import React from "react";
 
 interface TileProps {
     tile: LetterTile;
     width?: number;
     height?: number;
-    styles?: React.CSSProperties;
+    styles?: React.CSSProperties | SxProps;
     bodyVariant?: "body1" | "body2";
 }
 

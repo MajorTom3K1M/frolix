@@ -1,10 +1,9 @@
-import { useCallback } from "react";
+import React, { useCallback } from "react";
 import { useDrop, DropTargetMonitor, ConnectableElement } from "react-dnd";
 import { Box, Typography } from "@mui/material";
 import { SquareType } from "@/types/global";
 import { Star } from "lucide-react";
-import React from "react";
-import Tile from "../tile/Tile";
+import DraggableTile from "../tile/DraggableTile";
 
 interface LetterTile {
     id: string;
@@ -111,7 +110,7 @@ function Cell({
             )}
 
             {tile && (
-                <Tile
+                <DraggableTile
                     tile={tile}
                     styles={TILE_BASE_STYLES}
                 />

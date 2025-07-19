@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useTransition } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { DndProvider } from "react-dnd"
 import { HTML5Backend } from "react-dnd-html5-backend"
 import { TouchBackend } from "react-dnd-touch-backend"
@@ -9,6 +9,7 @@ import Board from "@/components/board/Board";
 import Tray from "@/components/tray/Tray";
 import CustomDragLayer from "@/components/tile/TileDragLayer";
 import { useMobile } from "@/hooks/useMobile"
+import { LetterTile } from "@/types/tiles"
 
 const LETTER_VALUES: Record<string, number> = {
   A: 1,
@@ -64,17 +65,30 @@ export default function ScrabbleGame() {
   // Initialize the tray with random letters
   useEffect(() => {
     setTrayTiles(generateRandomLetters(7))
-  }, [])
+  }, []);
 
-  const handleTileDrop = useCallback((tile: any, position: string) => {
-    // Remove the tile from the tray
-    setTrayTiles(prev => prev.filter(t => t.id !== tile.id))
-    // Add the tile to the board
-    setBoardTiles(prev => ({
+  const handleTileDrop = useCallback((tile: LetterTile & { position?: string }, newPosition: string) => {
+     // 1) If this tile already lived on the board, remove it from its old cell
+    setBoardTiles((prev) => {
+      if (tile.position && prev[tile.position]) {
+        const updated = { ...prev }
+        delete updated[tile.position]
+        return updated
+      }
+      return prev
+    });
+
+    // 2) If it lived in the tray (no `tile.position`), remove it from there
+    if (!tile.position) {
+      setTrayTiles((prev) => prev.filter((t) => t.id !== tile.id))
+    }
+
+    // 3) Finally, add it (or re‑add it) to the new board cell
+    setBoardTiles((prev) => ({
       ...prev,
-      [position]: { ...tile, position },
+      [newPosition]: { ...tile, position: newPosition },
     }))
-  }, [setTrayTiles, setBoardTiles])
+  }, [setTrayTiles, setBoardTiles]);
 
   useEffect(() => {
     detectWordsAndUpdateScore()
@@ -155,7 +169,7 @@ export default function ScrabbleGame() {
     }
 
     visited.clear()
-    
+
     // Then, find vertical words
     for (let col = 0; col < 15; col++) {
       let currentWord: any = null
