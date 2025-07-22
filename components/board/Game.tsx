@@ -10,6 +10,8 @@ import Tray from "@/components/tray/Tray";
 import CustomDragLayer from "@/components/tile/TileDragLayer";
 import { useMobile } from "@/hooks/useMobile"
 import { LetterTile } from "@/types/tiles"
+import BoardActionButton from "../button/BoardActionButton"
+import { RotateCcw, Shuffle } from "lucide-react"
 
 const LETTER_VALUES: Record<string, number> = {
   A: 1,
@@ -68,7 +70,7 @@ export default function ScrabbleGame() {
   }, []);
 
   const handleTileDrop = useCallback((tile: LetterTile & { position?: string }, newPosition: string) => {
-     // 1) If this tile already lived on the board, remove it from its old cell
+    // 1) If this tile already lived on the board, remove it from its old cell
     setBoardTiles((prev) => {
       if (tile.position && prev[tile.position]) {
         const updated = { ...prev }
@@ -244,7 +246,26 @@ export default function ScrabbleGame() {
 
         <Board boardTiles={boardTiles} onTileDrop={handleTileDrop} placedWords={placedWords} />
 
-        <Tray tiles={trayTiles} />
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          {/* Shuffle */}
+          <BoardActionButton
+            // onClick={handleShuffleTiles}
+            icon={<Shuffle size={20} />}
+            ariaLabel="Shuffle tiles"
+          />
+
+          <Box sx={{ textAlign: "center" }}>
+            <Tray tiles={trayTiles} />
+          </Box>
+
+          {/* Clear / Undo */}
+          <BoardActionButton
+            // onClick={handleClearBoard}
+            // disabled={currentTurnTiles.length === 0}
+            icon={<RotateCcw size={20} />}
+            ariaLabel="Clear board"
+          />
+        </Box>
       </Box>
     </DndProvider>
   )
