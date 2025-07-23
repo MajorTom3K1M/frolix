@@ -1,12 +1,14 @@
 "use client"
 
 import { Box, Paper, SxProps } from "@mui/material"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { LetterTile } from "@/types/tiles"
-import DraggableTile from "@/components/tile/DraggableTile"
+import { ConnectableElement, useDrop } from "react-dnd"
+import TrayTile from "@/components/tray/TrayTile"
 
 interface LetterTrayProps {
     tiles: LetterTile[]
+    onTileDrop: (tile: LetterTile & { position?: string }, index: number) => void
 }
 
 const TILE_DRAG_STYLES: SxProps = {
@@ -20,14 +22,14 @@ const TILE_DRAG_STYLES: SxProps = {
     },
 }
 
-export default function LetterTray({ tiles }: LetterTrayProps) {
-    const [trayWidth, setTrayWidth] = useState(450)
+export default function LetterTray({ tiles, onTileDrop }: LetterTrayProps) {
+    const [trayWidth, setTrayWidth] = useState(400)
 
     // Adjust tray width based on screen size
     useEffect(() => {
         const handleResize = () => {
             const viewportWidth = window.innerWidth
-            setTrayWidth(Math.min(viewportWidth - 40, 450))
+            setTrayWidth(Math.min(viewportWidth - 40, 400))
         }
 
         handleResize()
@@ -35,6 +37,20 @@ export default function LetterTray({ tiles }: LetterTrayProps) {
         return () => window.removeEventListener("resize", handleResize)
     }, [])
 
+    const [, dropRef] = useDrop({
+        accept: "LETTER",
+        drop: (item: LetterTile & { position?: string }) => {
+            if (!tiles.find((t) => t.id === item.id)) {
+                onTileDrop(item, tiles.length)
+            }
+        },
+    })
+
+    const refCallback = useCallback(
+        (el: ConnectableElement | null) => { if (el) dropRef(el); },
+        [dropRef]
+    );
+    
     return (
         <Paper
             elevation={3}
@@ -63,6 +79,7 @@ export default function LetterTray({ tiles }: LetterTrayProps) {
                     pointerEvents: "none",
                 },
             }}
+            ref={refCallback}
         >
             <Box
                 sx={{
@@ -74,13 +91,13 @@ export default function LetterTray({ tiles }: LetterTrayProps) {
                     height: "100%",
                 }}
             >
-                {tiles.map((tile) => (
-                    <DraggableTile
-                        width={40}
-                        height={40}
-                        styles={TILE_DRAG_STYLES}
+                {tiles.map((tile, index) => (
+                    <TrayTile
                         key={tile.id}
                         tile={tile}
+                        index={index}
+                        styles={TILE_DRAG_STYLES}
+                        onDrop={onTileDrop}
                     />
                 ))}
             </Box>

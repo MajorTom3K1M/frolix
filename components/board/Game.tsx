@@ -92,6 +92,33 @@ export default function ScrabbleGame() {
     }))
   }, [setTrayTiles, setBoardTiles]);
 
+  const handleTrayTileDrop = useCallback((tile: LetterTile & { position?: string }, index: number) => {
+    if (tile.position) {
+      setBoardTiles((prev) => {
+        const updated = { ...prev };
+        delete updated[tile.position as string];
+        return updated;
+      });
+    }
+
+    setTrayTiles((prev) => {
+      const newTray = [...prev];
+      const currentIndex = newTray.findIndex((t) => t.id === tile.id);
+      const trayTile = { ...tile } as LetterTile & { position?: string };
+      if (trayTile.position) {
+        delete trayTile.position;
+      }
+      if (currentIndex !== -1) {
+        const temp = newTray[index];
+        newTray[index] = trayTile;
+        newTray[currentIndex] = temp;
+      } else {
+        newTray.splice(index, 0, trayTile);
+      }
+      return newTray;
+    });
+  }, [setTrayTiles, setBoardTiles]);
+
   useEffect(() => {
     detectWordsAndUpdateScore()
   }, [boardTiles])
@@ -255,7 +282,7 @@ export default function ScrabbleGame() {
           />
 
           <Box sx={{ textAlign: "center" }}>
-            <Tray tiles={trayTiles} />
+            <Tray tiles={trayTiles} onTileDrop={handleTrayTileDrop} />
           </Box>
 
           {/* Clear / Undo */}
