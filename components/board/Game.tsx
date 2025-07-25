@@ -63,6 +63,7 @@ export default function ScrabbleGame() {
   const [trayTiles, setTrayTiles] = useState<any[]>([])
   const [boardTiles, setBoardTiles] = useState<Record<string, any>>({})
   const [placedWords, setPlacedWords] = useState<any[]>([])
+  const [draggingTileId, setDraggingTileId] = useState<string | null>(null)
 
   // Initialize the tray with random letters
   useEffect(() => {
@@ -121,7 +122,7 @@ export default function ScrabbleGame() {
 
   useEffect(() => {
     detectWordsAndUpdateScore()
-  }, [boardTiles])
+  }, [boardTiles, draggingTileId])
 
   // Refill the tray with new tiles
   const refillTray = () => {
@@ -140,14 +141,17 @@ export default function ScrabbleGame() {
     setScore(0)
   }
 
-  // Detect words and calculate score
+  // Detect words and calculate score (excluding currently dragging tile)
   const detectWordsAndUpdateScore = () => {
     const positions = Object.keys(boardTiles)
     const visited = new Set<string>()
     const words: any[] = []
 
-    // Helper function to check if a position has a tile
-    const hasTile = (pos: string) => boardTiles[pos] !== undefined
+    // Helper function to check if a position has a tile (excluding dragging tile)
+    const hasTile = (pos: string) => {
+      const tile = boardTiles[pos]
+      return tile !== undefined && tile.id !== draggingTileId
+    }
 
     // Helper function to get adjacent positions
     const getAdjacent = (pos: string) => {
@@ -168,15 +172,16 @@ export default function ScrabbleGame() {
         const pos = `${row}-${col}`
 
         if (hasTile(pos) && !visited.has(pos)) {
+          const tile = boardTiles[pos]
           if (!currentWord) {
             currentWord = {
-              tiles: [boardTiles[pos]],
+              tiles: [tile],
               positions: [pos],
               score: 0,
               isHorizontal: true,
             }
           } else {
-            currentWord.tiles.push(boardTiles[pos])
+            currentWord.tiles.push(tile)
             currentWord.positions.push(pos)
           }
           visited.add(pos)
@@ -207,15 +212,16 @@ export default function ScrabbleGame() {
         const pos = `${row}-${col}`
 
         if (hasTile(pos) && !visited.has(pos)) {
+          const tile = boardTiles[pos]
           if (!currentWord) {
             currentWord = {
-              tiles: [boardTiles[pos]],
+              tiles: [tile],
               positions: [pos],
               score: 0,
               isHorizontal: false,
             }
           } else {
-            currentWord.tiles.push(boardTiles[pos])
+            currentWord.tiles.push(tile)
             currentWord.positions.push(pos)
           }
           visited.add(pos)
@@ -242,6 +248,16 @@ export default function ScrabbleGame() {
     const totalScore = words.reduce((sum, word) => sum + word.score, 0)
     setScore(totalScore)
   }
+
+  // Handle drag start to track dragging tile
+  const handleDragStart = useCallback((tileId: string) => {
+    setDraggingTileId(tileId)
+  }, [])
+
+  // Handle drag end to stop tracking dragging tile
+  const handleDragEnd = useCallback(() => {
+    setDraggingTileId(null)
+  }, [])
 
   return (
     <DndProvider backend={isMobile ? TouchBackend : HTML5Backend}>
@@ -271,7 +287,13 @@ export default function ScrabbleGame() {
           </Box>
         </Box>
 
-        <Board boardTiles={boardTiles} onTileDrop={handleTileDrop} placedWords={placedWords} />
+        <Board 
+          boardTiles={boardTiles} 
+          onTileDrop={handleTileDrop} 
+          placedWords={placedWords} 
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        />
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           {/* Shuffle */}
@@ -282,7 +304,12 @@ export default function ScrabbleGame() {
           />
 
           <Box sx={{ textAlign: "center" }}>
-            <Tray tiles={trayTiles} onTileDrop={handleTrayTileDrop} />
+            <Tray 
+              tiles={trayTiles} 
+              onTileDrop={handleTrayTileDrop}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            />
           </Box>
 
           {/* Clear / Undo */}

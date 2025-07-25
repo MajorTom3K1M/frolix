@@ -10,16 +10,24 @@ interface DraggableTileProps {
     styles?: SxProps;
     width?: number;
     height?: number;
+    onDragStart?: (tileId: string) => void;
+    onDragEnd?: () => void;
 }
 
-const DraggableTile = ({ tile, styles, width, height }: DraggableTileProps) => {
+const DraggableTile = ({ tile, styles, width, height, onDragStart, onDragEnd }: DraggableTileProps) => {
     const [{ isDragging }, drag, preview] = useDrag(() => ({
         type: "LETTER",
-        item: tile,
+        item: () => {
+            onDragStart?.(tile.id);
+            return tile;
+        },
+        end: () => {
+            onDragEnd?.();
+        },
         collect: (monitor) => ({
             isDragging: !!monitor.isDragging(),
         }),
-    }), [tile]);
+    }), [tile, onDragStart, onDragEnd]);
 
     useEffect(() => {
         preview(getEmptyImage(), { captureDraggingState: true })

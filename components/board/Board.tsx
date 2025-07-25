@@ -275,9 +275,11 @@ interface ScrabbleBoardProps {
     boardTiles: Record<string, any>
     onTileDrop: (tile: any, position: string) => void
     placedWords: any[]
+    onDragStart: (tileId: string) => void
+    onDragEnd: () => void
 }
 
-export default function Board({ boardTiles, onTileDrop, placedWords }: ScrabbleBoardProps) {
+export default function Board({ boardTiles, onTileDrop, placedWords, onDragStart, onDragEnd }: ScrabbleBoardProps) {
     // Calculate the responsive size for the board
     const calculateBoardSize = () => {
         // Use viewport width for responsiveness
@@ -328,6 +330,8 @@ export default function Board({ boardTiles, onTileDrop, placedWords }: ScrabbleB
                         word={word}
                         canDrop={canDrop}
                         onDrop={onTileDrop}
+                        onDragStart={onDragStart}
+                        onDragEnd={onDragEnd}
                     />
                 );
             })}

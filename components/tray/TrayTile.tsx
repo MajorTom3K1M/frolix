@@ -9,9 +9,11 @@ interface TrayTileProps {
     index: number;
     styles: SxProps;
     onDrop: (tile: LetterTile & { position?: string }, index: number) => void;
+    onDragStart: (tileId: string) => void;
+    onDragEnd: () => void;
 }
 
-export default function TrayTile({ tile, index, styles, onDrop }: TrayTileProps) {
+export default function TrayTile({ tile, index, styles, onDrop, onDragStart, onDragEnd }: TrayTileProps) {
     const [, dropRef] = useDrop({
         accept: "LETTER",
         drop: (item: LetterTile & { position?: string }) => {
@@ -28,7 +30,14 @@ export default function TrayTile({ tile, index, styles, onDrop }: TrayTileProps)
     
     return (
         <Box ref={refCallback}>
-            <DraggableTile tile={tile} width={40} height={40} styles={styles} />
+            <DraggableTile 
+                tile={tile} 
+                width={40} 
+                height={40} 
+                styles={styles}
+                onDragStart={onDragStart}
+                onDragEnd={onDragEnd}
+            />
         </Box>
     );
 }

@@ -9,6 +9,8 @@ import TrayTile from "@/components/tray/TrayTile"
 interface LetterTrayProps {
     tiles: LetterTile[]
     onTileDrop: (tile: LetterTile & { position?: string }, index: number) => void
+    onDragStart: (tileId: string) => void
+    onDragEnd: () => void
 }
 
 const TILE_DRAG_STYLES: SxProps = {
@@ -22,7 +24,7 @@ const TILE_DRAG_STYLES: SxProps = {
     },
 }
 
-export default function LetterTray({ tiles, onTileDrop }: LetterTrayProps) {
+export default function LetterTray({ tiles, onTileDrop, onDragStart, onDragEnd }: LetterTrayProps) {
     const [trayWidth, setTrayWidth] = useState(400)
 
     // Adjust tray width based on screen size
@@ -98,6 +100,8 @@ export default function LetterTray({ tiles, onTileDrop }: LetterTrayProps) {
                         index={index}
                         styles={TILE_DRAG_STYLES}
                         onDrop={onTileDrop}
+                        onDragStart={onDragStart}
+                        onDragEnd={onDragEnd}
                     />
                 ))}
             </Box>
