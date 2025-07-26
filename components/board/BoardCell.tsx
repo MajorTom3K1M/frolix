@@ -4,40 +4,39 @@ import { Box, Typography } from "@mui/material";
 import { SquareType } from "@/types/global";
 import { Star } from "lucide-react";
 import DraggableTile from "../tile/DraggableTile";
-
-interface LetterTile {
-    id: string;
-    letter: string;
-    value: number;
-}
+import { LetterTile, MathTile } from "@/types/tiles";
 
 interface BoardCellProps {
     squareType: SquareType;
     position: string;
     cellSize: number;
-    tile?: LetterTile;
+    tile?: LetterTile | MathTile;
     word?: { positions: string[]; score: number };
     canDrop: boolean;
-    onDrop: (tile: LetterTile, position: string) => void;
+    onDrop: (tile: LetterTile | MathTile, position: string) => void;
     onDragStart: (tileId: string) => void;
     onDragEnd: () => void;
 }
 
 const squareColors: Record<SquareType, string> = {
     normal: "#f5e9d5",
-    dl: "#a6d1fa",
-    tl: "#4a9ced",
-    dw: "#f5b7b1",
-    tw: "#e74c3c",
+    dt: "#a6d1fa",
+    tt: "#4a9ced",
+    de: "#f5b7b1",
+    te: "#e74c3c",
+    // dt: "#ffa726",
+    // tt: "#42a5f5",
+    // de: "#ffeb3b",
+    // te: "#f44336",
     star: "#f5b7b1",
 };
 
 const squareLabels: Record<SquareType, string> = {
     normal: "",
-    dl: "DL",
-    tl: "TL",
-    dw: "DW",
-    tw: "TW",
+    dt: "DT", // Double Tile
+    tt: "TT", // Triple Tile
+    de: "DE", // Double Equation
+    te: "TE", // Triple Equation
     star: "",
 };
 
@@ -54,7 +53,7 @@ function Cell({
     squareType, position, cellSize, tile, word, canDrop, onDrop, onDragStart, onDragEnd
 }: Readonly<BoardCellProps>) {
     const handleDrop = useCallback(
-        (item: LetterTile) => {
+        (item: LetterTile | MathTile) => {
             onDrop(item, position);
         },
         [onDrop, position]
@@ -62,7 +61,7 @@ function Cell({
 
     const [{ isOver }, dropRef] = useDrop(
         () => ({
-            accept: "LETTER",
+            accept: "MATH_TILE",
             drop: handleDrop,
             canDrop: () => canDrop,
             collect: (monitor: DropTargetMonitor) => ({

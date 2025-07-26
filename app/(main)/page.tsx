@@ -6,7 +6,7 @@ export default function Home() {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h3" component="h1" gutterBottom align="center" sx={{ mb: 4 }}>
-        Board Game
+        A-Math Game
       </Typography>
       <Box sx={{ display: "flex", justifyContent: "center" }}>
         <Game />

@@ -1,4 +1,4 @@
-import { LetterTile } from "@/types/tiles";
+import { LetterTile, MathTile } from "@/types/tiles";
 import React, { useMemo } from "react";
 import { useDragLayer } from "react-dnd";
 import Tile from "./Tile";
@@ -13,7 +13,7 @@ const LAYER_BASE_STYLES: React.CSSProperties = {
 
 const TileDragLayer = React.memo(() => {
     const { item, itemType, currentOffset, isDragging } = useDragLayer((monitor) => ({
-        item: monitor.getItem<LetterTile>(),
+        item: monitor.getItem<LetterTile | MathTile>(),
         itemType: monitor.getItemType(),
         currentOffset: monitor.getSourceClientOffset(),
         isDragging: monitor.isDragging(),
@@ -39,7 +39,7 @@ const TileDragLayer = React.memo(() => {
         };
     }, [currentOffset]);
 
-    if (!isDragging || itemType !== "LETTER" || !currentOffset) return null
+    if (!isDragging || itemType !== "MATH_TILE" || !currentOffset) return null
 
     return <Tile width={40} height={40} tile={item} styles={layerStyles} />
 });

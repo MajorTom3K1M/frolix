@@ -13,8 +13,8 @@ export const colorMap: Record<ChipColor, string> = {
 
 export type SquareType =
     | "normal"
-    | "dl"
-    | "tl"
-    | "dw"
-    | "tw"
+    | "dt" // double tile (orange) - tile scores 2× its face value
+    | "tt" // triple tile (blue) - tile scores 3× its face value
+    | "de" // double equation (yellow) - equation scores 2× its total
+    | "te" // triple equation (red) - equation scores 3× its total
     | "star";

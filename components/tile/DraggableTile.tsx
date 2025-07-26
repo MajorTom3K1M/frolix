@@ -1,4 +1,4 @@
-import { LetterTile } from "@/types/tiles";
+import { LetterTile, MathTile } from "@/types/tiles";
 import { SxProps } from "@mui/material";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { ConnectableElement, useDrag } from "react-dnd";
@@ -6,7 +6,7 @@ import { getEmptyImage } from "react-dnd-html5-backend";
 import Tile from "@/components/tile/Tile";
 
 interface DraggableTileProps {
-    tile: LetterTile;
+    tile: LetterTile | MathTile;
     styles?: SxProps;
     width?: number;
     height?: number;
@@ -16,7 +16,7 @@ interface DraggableTileProps {
 
 const DraggableTile = ({ tile, styles, width, height, onDragStart, onDragEnd }: DraggableTileProps) => {
     const [{ isDragging }, drag, preview] = useDrag(() => ({
-        type: "LETTER",
+        type: "MATH_TILE",
         item: () => {
             onDragStart?.(tile.id);
             return tile;

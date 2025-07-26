@@ -1,9 +1,9 @@
-import { LetterTile } from "@/types/tiles";
+import { LetterTile, MathTile } from "@/types/tiles";
 import { Box, SxProps, Typography } from "@mui/material";
 import React from "react";
 
 interface TileProps {
-    tile: LetterTile;
+    tile: LetterTile | MathTile;
     width?: number;
     height?: number;
     styles?: React.CSSProperties | SxProps;
@@ -33,6 +33,22 @@ const _Tile = React.forwardRef<HTMLDivElement, TileProps>(function Tile(
     { tile, width, height, styles = {}, bodyVariant = "body1" }: TileProps,
     ref
 ) {
+    const displayText = 'symbol' in tile ? tile.symbol : tile.letter;
+    const isMathTile = 'symbol' in tile;
+    
+    const getTileColor = () => {
+        if (!isMathTile) return "#f0e68c";
+        
+        const mathTile = tile as MathTile;
+        switch (mathTile.type) {
+            default: return "#f0e68c";
+            // case 'number': return "#e8f5e8";
+            // case 'operator': return "#fff3e0";
+            // case 'equals': return "#e3f2fd";
+            // default: return "#f0e68c";
+        }
+    };
+    
     return (
         <Box
             ref={ref}
@@ -40,11 +56,12 @@ const _Tile = React.forwardRef<HTMLDivElement, TileProps>(function Tile(
                 width,
                 height,
                 ...TILE_BASE_STYLES,
+                backgroundColor: getTileColor(),
                 ...styles,
             }}
         >
             <Typography variant={bodyVariant} sx={{ fontWeight: "bold" }}>
-                {tile.letter}
+                {displayText}
             </Typography>
             <Typography variant="caption" sx={BADGE_STYLES}>
                 {tile.value}

@@ -9,68 +9,105 @@ import Board from "@/components/board/Board";
 import Tray from "@/components/tray/Tray";
 import CustomDragLayer from "@/components/tile/TileDragLayer";
 import { useMobile } from "@/hooks/useMobile"
-import { LetterTile } from "@/types/tiles"
+import { MathTile, LetterTile } from "@/types/tiles"
 import BoardActionButton from "../button/BoardActionButton"
 import { RotateCcw, Shuffle } from "lucide-react"
+import { SquareType } from "@/types/global"
 
-const LETTER_VALUES: Record<string, number> = {
-  A: 1,
-  B: 3,
-  C: 3,
-  D: 2,
-  E: 1,
-  F: 4,
-  G: 2,
-  H: 4,
-  I: 1,
-  J: 8,
-  K: 5,
-  L: 1,
-  M: 3,
-  N: 1,
-  O: 1,
-  P: 3,
-  Q: 10,
-  R: 1,
-  S: 1,
-  T: 1,
-  U: 1,
-  V: 4,
-  W: 4,
-  X: 8,
-  Y: 4,
-  Z: 10,
+const MATH_TILE_VALUES: Record<string, number> = {
+  // Numbers 0-20
+  '0': 1, '1': 1, '2': 1, '3': 1, '4': 2, '5': 2, '6': 2, '7': 2, '8': 2, '9': 2,
+  '10': 3, '11': 4, '12': 3, '13': 6, '14': 4, '15': 4, '16': 4, '17': 6, '18': 4, '19': 7, '20': 5,
+
+  // Operators
+  '+': 2, '-': 2, '±': 1, '×': 2, '÷': 2, '×/÷': 1, '=': 1,
+
+  // Blank tiles
+  'blank': 0,
 }
 
-// Generate a random set of 7 letters
-const generateRandomLetters = (count: number) => {
-  const letters = "AAAAAAAAABBCCDDDDEEEEEEEEEEEEFFGGGHHIIIIIIIIIJKLLLLMMNNNNNNOOOOOOOOPPQRRRRRRSSSSTTTTTTUUUUVVWWXYYZ"
-  const result = []
+// A-Math tile pool with exact distribution as specified
+const createAMathTilePool = (): string[] => {
+  const pool: string[] = []
+  
+  // Numbers
+  pool.push(...Array(5).fill('0'))
+  pool.push(...Array(6).fill('1')) 
+  pool.push(...Array(6).fill('2'))
+  pool.push(...Array(5).fill('3'))
+  pool.push(...Array(5).fill('4'))
+  pool.push(...Array(4).fill('5'))
+  pool.push(...Array(4).fill('6'))
+  pool.push(...Array(4).fill('7'))
+  pool.push(...Array(4).fill('8'))
+  pool.push(...Array(4).fill('9'))
+  pool.push(...Array(2).fill('10'))
+  pool.push(...Array(1).fill('11')) 
+  pool.push(...Array(2).fill('12'))
+  pool.push(...Array(1).fill('13'))
+  pool.push(...Array(1).fill('14'))
+  pool.push(...Array(1).fill('15'))
+  pool.push(...Array(1).fill('16'))
+  pool.push(...Array(1).fill('17'))
+  pool.push(...Array(1).fill('18'))
+  pool.push(...Array(1).fill('19'))
+  pool.push(...Array(1).fill('20'))
+  
+  // Operators
+  pool.push(...Array(4).fill('+'))
+  pool.push(...Array(4).fill('-'))
+  pool.push(...Array(5).fill('±'))
+  pool.push(...Array(4).fill('×'))
+  pool.push(...Array(4).fill('÷'))
+  pool.push(...Array(4).fill('×/÷'))
+  pool.push(...Array(11).fill('='))
+  
+  // Blank tiles
+  pool.push(...Array(4).fill('blank'))
+  
+  return pool
+}
+
+const generateRandomMathTiles = (count: number): MathTile[] => {
+  const tilePool = createAMathTilePool()
+  const result: MathTile[] = []
+  
   for (let i = 0; i < count; i++) {
-    const randomIndex = Math.floor(Math.random() * letters.length)
+    const randomIndex = Math.floor(Math.random() * tilePool.length)
+    const symbol = tilePool.splice(randomIndex, 1)[0] // Remove from pool to avoid duplicates
+    
+    const getType = (sym: string): 'number' | 'operator' | 'equals' | 'blank' | 'dual' => {
+      if (sym === 'blank') return 'blank'
+      if (sym === '=') return 'equals'
+      if (['±', '×/÷'].includes(sym)) return 'dual'
+      if (['+', '-', '×', '÷'].includes(sym)) return 'operator'
+      return 'number'
+    }
+    
     result.push({
-      id: `tile-${i}-${Date.now()}`,
-      letter: letters[randomIndex],
-      value: LETTER_VALUES[letters[randomIndex]],
+      id: `tile-${i}-${Date.now()}-${Math.random()}`,
+      symbol: symbol,
+      value: MATH_TILE_VALUES[symbol],
+      type: getType(symbol),
+      isBlank: symbol === 'blank',
     })
   }
   return result
 }
 
-export default function ScrabbleGame() {
+export default function AMathGame() {
   const isMobile = useMobile()
   const [score, setScore] = useState(0)
-  const [trayTiles, setTrayTiles] = useState<any[]>([])
-  const [boardTiles, setBoardTiles] = useState<Record<string, any>>({})
-  const [placedWords, setPlacedWords] = useState<any[]>([])
+  const [trayTiles, setTrayTiles] = useState<MathTile[]>([])
+  const [boardTiles, setBoardTiles] = useState<Record<string, MathTile & { position?: string }>>({})
+  const [placedEquations, setPlacedEquations] = useState<any[]>([])
   const [draggingTileId, setDraggingTileId] = useState<string | null>(null)
 
-  // Initialize the tray with random letters
   useEffect(() => {
-    setTrayTiles(generateRandomLetters(7))
+    setTrayTiles(generateRandomMathTiles(8))
   }, []);
 
-  const handleTileDrop = useCallback((tile: LetterTile & { position?: string }, newPosition: string) => {
+  const handleTileDrop = useCallback((tile: MathTile & { position?: string }, newPosition: string) => {
     // 1) If this tile already lived on the board, remove it from its old cell
     setBoardTiles((prev) => {
       if (tile.position && prev[tile.position]) {
@@ -93,7 +130,7 @@ export default function ScrabbleGame() {
     }))
   }, [setTrayTiles, setBoardTiles]);
 
-  const handleTrayTileDrop = useCallback((tile: LetterTile & { position?: string }, index: number) => {
+  const handleTrayTileDrop = useCallback((tile: (MathTile | LetterTile) & { position?: string }, index: number) => {
     if (tile.position) {
       setBoardTiles((prev) => {
         const updated = { ...prev };
@@ -105,7 +142,7 @@ export default function ScrabbleGame() {
     setTrayTiles((prev) => {
       const newTray = [...prev];
       const currentIndex = newTray.findIndex((t) => t.id === tile.id);
-      const trayTile = { ...tile } as LetterTile & { position?: string };
+      const trayTile = { ...tile } as MathTile & { position?: string };
       if (trayTile.position) {
         delete trayTile.position;
       }
@@ -121,31 +158,83 @@ export default function ScrabbleGame() {
   }, [setTrayTiles, setBoardTiles]);
 
   useEffect(() => {
-    detectWordsAndUpdateScore()
+    detectEquationsAndUpdateScore()
   }, [boardTiles, draggingTileId])
 
   // Refill the tray with new tiles
   const refillTray = () => {
     const currentCount = trayTiles.length
-    if (currentCount < 7) {
-      const newTiles = generateRandomLetters(7 - currentCount)
+    if (currentCount < 8) {
+      const newTiles = generateRandomMathTiles(8 - currentCount)
       setTrayTiles((prev) => [...prev, ...newTiles])
     }
   }
 
   // Reset the game
   const resetGame = () => {
-    setTrayTiles(generateRandomLetters(7))
+    setTrayTiles(generateRandomMathTiles(8))
     setBoardTiles({})
-    setPlacedWords([])
+    setPlacedEquations([])
     setScore(0)
   }
 
-  // Detect words and calculate score (excluding currently dragging tile)
-  const detectWordsAndUpdateScore = () => {
+  const getBoardSquareType = (position: string): SquareType => {
+    const [row, col] = position.split('-').map(Number)
+    const boardLayout = [
+      ["te", "normal", "normal", "dt", "normal", "normal", "normal", "te", "normal", "normal", "normal", "dt", "normal", "normal", "te"],
+      ["normal", "de", "normal", "normal", "normal", "tt", "normal", "normal", "normal", "tt", "normal", "normal", "normal", "de", "normal"],
+      ["normal", "normal", "de", "normal", "normal", "normal", "dt", "normal", "dt", "normal", "normal", "normal", "de", "normal", "normal"],
+      ["dt", "normal", "normal", "de", "normal", "normal", "normal", "dt", "normal", "normal", "normal", "de", "normal", "normal", "dt"],
+      ["normal", "normal", "normal", "normal", "de", "normal", "normal", "normal", "normal", "normal", "de", "normal", "normal", "normal", "normal"],
+      ["normal", "tt", "normal", "normal", "normal", "tt", "normal", "normal", "normal", "tt", "normal", "normal", "normal", "tt", "normal"],
+      ["normal", "normal", "dt", "normal", "normal", "normal", "dt", "normal", "dt", "normal", "normal", "normal", "dt", "normal", "normal"],
+      ["te", "normal", "normal", "dt", "normal", "normal", "normal", "star", "normal", "normal", "normal", "dt", "normal", "normal", "te"],
+      ["normal", "normal", "dt", "normal", "normal", "normal", "dt", "normal", "dt", "normal", "normal", "normal", "dt", "normal", "normal"],
+      ["normal", "tt", "normal", "normal", "normal", "tt", "normal", "normal", "normal", "tt", "normal", "normal", "normal", "tt", "normal"],
+      ["normal", "normal", "normal", "normal", "de", "normal", "normal", "normal", "normal", "normal", "de", "normal", "normal", "normal", "normal"],
+      ["dt", "normal", "normal", "de", "normal", "normal", "normal", "dt", "normal", "normal", "normal", "de", "normal", "normal", "dt"],
+      ["normal", "normal", "de", "normal", "normal", "normal", "dt", "normal", "dt", "normal", "normal", "normal", "de", "normal", "normal"],
+      ["normal", "de", "normal", "normal", "normal", "tt", "normal", "normal", "normal", "tt", "normal", "normal", "normal", "de", "normal"],
+      ["te", "normal", "normal", "dt", "normal", "normal", "normal", "te", "normal", "normal", "normal", "dt", "normal", "normal", "te"]
+    ]
+    return (boardLayout[row]?.[col] || "normal") as SquareType
+  }
+
+  const calculateEquationScore = (tiles: MathTile[], positions: string[]): number => {
+    let totalScore = 0
+    let equationMultiplier = 1
+    
+    for (let i = 0; i < tiles.length; i++) {
+      const tile = tiles[i]
+      const position = positions[i]
+      const squareType = getBoardSquareType(position)
+      
+      let tileScore = tile.value
+      
+      if (squareType === 'dt') { // Double Tile
+        tileScore *= 2
+      } else if (squareType === 'tt') { // Triple Tile
+        tileScore *= 3
+      }
+      
+      if (squareType === 'de') { // Double Equation
+        equationMultiplier = Math.max(equationMultiplier, 2)
+      } else if (squareType === 'te') { // Triple Equation
+        equationMultiplier = Math.max(equationMultiplier, 3)
+      }
+      
+      totalScore += tileScore
+    }
+    
+    // Apply equation multiplier
+    return totalScore * equationMultiplier
+  }
+
+  // Detect equations and calculate score (excluding currently dragging tile)
+  const detectEquationsAndUpdateScore = () => {
     const positions = Object.keys(boardTiles)
     const visited = new Set<string>()
-    const words: any[] = []
+    const equations: any[] = []
 
     // Helper function to check if a position has a tile (excluding dragging tile)
     const hasTile = (pos: string) => {
@@ -153,99 +242,143 @@ export default function ScrabbleGame() {
       return tile !== undefined && tile.id !== draggingTileId
     }
 
-    // Helper function to get adjacent positions
-    const getAdjacent = (pos: string) => {
-      const [row, col] = pos.split("-").map(Number)
-      return [
-        `${row}-${col + 1}`, // right
-        `${row}-${col - 1}`, // left
-        `${row + 1}-${col}`, // down
-        `${row - 1}-${col}`, // up
-      ]
+    // Helper function to evaluate a mathematical expression for A-Math
+    const evaluateExpression = (expression: string): number | null => {
+      try {
+        // Handle A-Math operators and numbers 0-20
+        let processed = expression
+          .replace(/×/g, '*')  // Convert × to *
+          .replace(/÷/g, '/')  // Convert ÷ to /
+          .replace(/\s+/g, '') // Remove spaces
+        
+        // Handle dual operators (±, ×/÷) by resolving them to their chosen values
+        // For now, we'll need to handle this in the tile placement logic
+        
+        // Validate only allowed characters: numbers 0-20, +, -, *, /, (, )
+        if (!/^[0-9+\-*/().]+$/.test(processed)) return null
+        
+        // Additional validation for numbers up to 20
+        const numberMatches = processed.match(/\d+/g)
+        if (numberMatches) {
+          for (const num of numberMatches) {
+            if (parseInt(num) > 20) return null
+          }
+        }
+        
+        // Use Function constructor for safe evaluation
+        const result = new Function(`"use strict"; return (${processed})`)()
+        return typeof result === 'number' && !isNaN(result) ? result : null
+      } catch {
+        return null
+      }
     }
 
-    // First, try to find horizontal words
+    // Check if an equation string is valid (has = and both sides evaluate correctly)
+    const isValidEquation = (equationStr: string): boolean => {
+      const parts = equationStr.split('=')
+      if (parts.length < 2) return false
+      
+      try {
+        const leftSide = evaluateExpression(parts[0].trim())
+        const rightSide = evaluateExpression(parts[1].trim())
+        
+        if (leftSide === null || rightSide === null) return false
+        return Math.abs(leftSide - rightSide) < 0.0001 // Handle floating point precision
+      } catch {
+        return false
+      }
+    }
+
+    // First, try to find horizontal equations
     for (let row = 0; row < 15; row++) {
-      let currentWord: any = null
+      let currentEquation: any = null
 
       for (let col = 0; col < 15; col++) {
         const pos = `${row}-${col}`
 
         if (hasTile(pos) && !visited.has(pos)) {
           const tile = boardTiles[pos]
-          if (!currentWord) {
-            currentWord = {
+          if (!currentEquation) {
+            currentEquation = {
               tiles: [tile],
               positions: [pos],
               score: 0,
               isHorizontal: true,
+              expression: tile.symbol,
             }
           } else {
-            currentWord.tiles.push(tile)
-            currentWord.positions.push(pos)
+            currentEquation.tiles.push(tile)
+            currentEquation.positions.push(pos)
+            currentEquation.expression += tile.symbol
           }
           visited.add(pos)
-        } else if (!hasTile(pos) && currentWord) {
-          // End of word
-          if (currentWord.tiles.length >= 2) {
-            currentWord.score = currentWord.tiles.reduce((sum: number, tile: any) => sum + tile.value, 0)
-            words.push(currentWord)
+        } else if (!hasTile(pos) && currentEquation) {
+          // End of equation
+          if (currentEquation.tiles.length >= 3 && isValidEquation(currentEquation.expression)) {
+            currentEquation.score = calculateEquationScore(currentEquation.tiles, currentEquation.positions)
+            currentEquation.isValid = true
+            equations.push(currentEquation)
           }
-          currentWord = null
+          currentEquation = null
         }
       }
 
-      // Check if word ends at the edge of the board
-      if (currentWord && currentWord.tiles.length >= 2) {
-        currentWord.score = currentWord.tiles.reduce((sum: number, tile: any) => sum + tile.value, 0)
-        words.push(currentWord)
+      // Check if equation ends at the edge of the board
+      if (currentEquation && currentEquation.tiles.length >= 3 && isValidEquation(currentEquation.expression)) {
+        currentEquation.score = currentEquation.tiles.reduce((sum: number, tile: MathTile) => sum + tile.value, 0)
+        currentEquation.isValid = true
+        equations.push(currentEquation)
       }
     }
 
     visited.clear()
 
-    // Then, find vertical words
+    // Then, find vertical equations
     for (let col = 0; col < 15; col++) {
-      let currentWord: any = null
+      let currentEquation: any = null
 
       for (let row = 0; row < 15; row++) {
         const pos = `${row}-${col}`
 
         if (hasTile(pos) && !visited.has(pos)) {
           const tile = boardTiles[pos]
-          if (!currentWord) {
-            currentWord = {
+          if (!currentEquation) {
+            currentEquation = {
               tiles: [tile],
               positions: [pos],
               score: 0,
               isHorizontal: false,
+              expression: tile.symbol,
             }
           } else {
-            currentWord.tiles.push(tile)
-            currentWord.positions.push(pos)
+            currentEquation.tiles.push(tile)
+            currentEquation.positions.push(pos)
+            currentEquation.expression += tile.symbol
           }
           visited.add(pos)
-        } else if (!hasTile(pos) && currentWord) {
-          // End of word
-          if (currentWord.tiles.length >= 2) {
-            currentWord.score = currentWord.tiles.reduce((sum: number, tile: any) => sum + tile.value, 0)
-            words.push(currentWord)
+        } else if (!hasTile(pos) && currentEquation) {
+          // End of equation
+          if (currentEquation.tiles.length >= 3 && isValidEquation(currentEquation.expression)) {
+            currentEquation.score = calculateEquationScore(currentEquation.tiles, currentEquation.positions)
+            currentEquation.isValid = true
+            equations.push(currentEquation)
           }
-          currentWord = null
+          currentEquation = null
         }
       }
 
-      // Check if word ends at the edge of the board
-      if (currentWord && currentWord.tiles.length >= 2) {
-        currentWord.score = currentWord.tiles.reduce((sum: number, tile: any) => sum + tile.value, 0)
-        words.push(currentWord)
+      // Check if equation ends at the edge of the board
+      if (currentEquation && currentEquation.tiles.length >= 3 && isValidEquation(currentEquation.expression)) {
+        currentEquation.score = currentEquation.tiles.reduce((sum: number, tile: MathTile) => sum + tile.value, 0)
+        currentEquation.isValid = true
+        equations.push(currentEquation)
       }
     }
 
-    setPlacedWords(words)
+    setPlacedEquations(equations)
 
     // Calculate total score
-    const totalScore = words.reduce((sum, word) => sum + word.score, 0)
+    const totalScore = equations.reduce((sum, eq) => sum + eq.score, 0)
     setScore(totalScore)
   }
 
@@ -290,7 +423,7 @@ export default function ScrabbleGame() {
         <Board 
           boardTiles={boardTiles} 
           onTileDrop={handleTileDrop} 
-          placedWords={placedWords} 
+          placedWords={placedEquations} 
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         />

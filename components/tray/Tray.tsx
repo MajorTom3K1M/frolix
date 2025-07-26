@@ -2,13 +2,13 @@
 
 import { Box, Paper, SxProps } from "@mui/material"
 import { useCallback, useEffect, useState } from "react"
-import { LetterTile } from "@/types/tiles"
+import { LetterTile, MathTile } from "@/types/tiles"
 import { ConnectableElement, useDrop } from "react-dnd"
 import TrayTile from "@/components/tray/TrayTile"
 
-interface LetterTrayProps {
-    tiles: LetterTile[]
-    onTileDrop: (tile: LetterTile & { position?: string }, index: number) => void
+interface MathTrayProps {
+    tiles: (LetterTile | MathTile)[]
+    onTileDrop: (tile: (LetterTile | MathTile) & { position?: string }, index: number) => void
     onDragStart: (tileId: string) => void
     onDragEnd: () => void
 }
@@ -24,24 +24,28 @@ const TILE_DRAG_STYLES: SxProps = {
     },
 }
 
-export default function LetterTray({ tiles, onTileDrop, onDragStart, onDragEnd }: LetterTrayProps) {
-    const [trayWidth, setTrayWidth] = useState(400)
+export default function MathTray({ tiles, onTileDrop, onDragStart, onDragEnd }: MathTrayProps) {
+    const [trayWidth, setTrayWidth] = useState(360)
 
-    // Adjust tray width based on screen size
+    // Fixed tray width sized for maximum 8 tiles
     useEffect(() => {
         const handleResize = () => {
             const viewportWidth = window.innerWidth
-            setTrayWidth(Math.min(viewportWidth - 40, 400))
+            
+            // Calculate width for max 8 tiles: 8 * 40px (tiles) + 7 * 8px (gaps) + 20px (padding) = 376px
+            const maxTrayWidth = (8 * 40) + (9 * 8) + (9 * 4) + 20;
+            
+            setTrayWidth(Math.min(viewportWidth - 40, maxTrayWidth))
         }
 
         handleResize()
         window.addEventListener("resize", handleResize)
         return () => window.removeEventListener("resize", handleResize)
-    }, [])
+    }, []) // Only depends on screen resize, not tile count
 
     const [, dropRef] = useDrop({
-        accept: "LETTER",
-        drop: (item: LetterTile & { position?: string }) => {
+        accept: "MATH_TILE",
+        drop: (item: (LetterTile | MathTile) & { position?: string }) => {
             if (!tiles.find((t) => t.id === item.id)) {
                 onTileDrop(item, tiles.length)
             }
