@@ -5,12 +5,15 @@ import { DndProvider } from "react-dnd"
 import { HTML5Backend } from "react-dnd-html5-backend"
 import { TouchBackend } from "react-dnd-touch-backend"
 import { Box, Typography, Button } from "@mui/material"
+
 import Board from "@/components/board/Board";
 import Tray from "@/components/tray/Tray";
 import CustomDragLayer from "@/components/tile/TileDragLayer";
+import BoardActionButton from "@/components/button/BoardActionButton"
+import Scoreboard from "@/components/scoreboard/Scoreboard"
+
 import { useMobile } from "@/hooks/useMobile"
 import { MathTile, LetterTile } from "@/types/tiles"
-import BoardActionButton from "../button/BoardActionButton"
 import { RotateCcw, Shuffle } from "lucide-react"
 import { SquareType } from "@/types/global"
 
@@ -29,10 +32,10 @@ const MATH_TILE_VALUES: Record<string, number> = {
 // A-Math tile pool with exact distribution as specified
 const createAMathTilePool = (): string[] => {
   const pool: string[] = []
-  
+
   // Numbers
   pool.push(...Array(5).fill('0'))
-  pool.push(...Array(6).fill('1')) 
+  pool.push(...Array(6).fill('1'))
   pool.push(...Array(6).fill('2'))
   pool.push(...Array(5).fill('3'))
   pool.push(...Array(5).fill('4'))
@@ -42,7 +45,7 @@ const createAMathTilePool = (): string[] => {
   pool.push(...Array(4).fill('8'))
   pool.push(...Array(4).fill('9'))
   pool.push(...Array(2).fill('10'))
-  pool.push(...Array(1).fill('11')) 
+  pool.push(...Array(1).fill('11'))
   pool.push(...Array(2).fill('12'))
   pool.push(...Array(1).fill('13'))
   pool.push(...Array(1).fill('14'))
@@ -52,7 +55,7 @@ const createAMathTilePool = (): string[] => {
   pool.push(...Array(1).fill('18'))
   pool.push(...Array(1).fill('19'))
   pool.push(...Array(1).fill('20'))
-  
+
   // Operators
   pool.push(...Array(4).fill('+'))
   pool.push(...Array(4).fill('-'))
@@ -61,21 +64,21 @@ const createAMathTilePool = (): string[] => {
   pool.push(...Array(4).fill('÷'))
   pool.push(...Array(4).fill('×/÷'))
   pool.push(...Array(11).fill('='))
-  
+
   // Blank tiles
   pool.push(...Array(4).fill('blank'))
-  
+
   return pool
 }
 
 const generateRandomMathTiles = (count: number): MathTile[] => {
   const tilePool = createAMathTilePool()
   const result: MathTile[] = []
-  
+
   for (let i = 0; i < count; i++) {
     const randomIndex = Math.floor(Math.random() * tilePool.length)
     const symbol = tilePool.splice(randomIndex, 1)[0] // Remove from pool to avoid duplicates
-    
+
     const getType = (sym: string): 'number' | 'operator' | 'equals' | 'blank' | 'dual' => {
       if (sym === 'blank') return 'blank'
       if (sym === '=') return 'equals'
@@ -83,7 +86,7 @@ const generateRandomMathTiles = (count: number): MathTile[] => {
       if (['+', '-', '×', '÷'].includes(sym)) return 'operator'
       return 'number'
     }
-    
+
     result.push({
       id: `tile-${i}-${Date.now()}-${Math.random()}`,
       symbol: symbol,
@@ -102,6 +105,11 @@ export default function AMathGame() {
   const [boardTiles, setBoardTiles] = useState<Record<string, MathTile & { position?: string }>>({})
   const [placedEquations, setPlacedEquations] = useState<any[]>([])
   const [draggingTileId, setDraggingTileId] = useState<string | null>(null)
+  const [currentTurn, setCurrentTurn] = useState(1)
+  const [players, setPlayers] = useState<(Player & { tiles: any[] })[]>([
+    { id: 1, name: "Player 1", score: 0, isActive: false, tiles: [] },
+    { id: 2, name: "Player 2", score: 0, isActive: false, tiles: [] },
+  ])
 
   useEffect(() => {
     setTrayTiles(generateRandomMathTiles(8))
@@ -203,29 +211,29 @@ export default function AMathGame() {
   const calculateEquationScore = (tiles: MathTile[], positions: string[]): number => {
     let totalScore = 0
     let equationMultiplier = 1
-    
+
     for (let i = 0; i < tiles.length; i++) {
       const tile = tiles[i]
       const position = positions[i]
       const squareType = getBoardSquareType(position)
-      
+
       let tileScore = tile.value
-      
+
       if (squareType === 'dt') { // Double Tile
         tileScore *= 2
       } else if (squareType === 'tt') { // Triple Tile
         tileScore *= 3
       }
-      
+
       if (squareType === 'de') { // Double Equation
         equationMultiplier = Math.max(equationMultiplier, 2)
       } else if (squareType === 'te') { // Triple Equation
         equationMultiplier = Math.max(equationMultiplier, 3)
       }
-      
+
       totalScore += tileScore
     }
-    
+
     // Apply equation multiplier
     return totalScore * equationMultiplier
   }
@@ -250,13 +258,13 @@ export default function AMathGame() {
           .replace(/×/g, '*')  // Convert × to *
           .replace(/÷/g, '/')  // Convert ÷ to /
           .replace(/\s+/g, '') // Remove spaces
-        
+
         // Handle dual operators (±, ×/÷) by resolving them to their chosen values
         // For now, we'll need to handle this in the tile placement logic
-        
+
         // Validate only allowed characters: numbers 0-20, +, -, *, /, (, )
         if (!/^[0-9+\-*/().]+$/.test(processed)) return null
-        
+
         // Additional validation for numbers up to 20
         const numberMatches = processed.match(/\d+/g)
         if (numberMatches) {
@@ -264,7 +272,7 @@ export default function AMathGame() {
             if (parseInt(num) > 20) return null
           }
         }
-        
+
         // Use Function constructor for safe evaluation
         const result = new Function(`"use strict"; return (${processed})`)()
         return typeof result === 'number' && !isNaN(result) ? result : null
@@ -276,10 +284,10 @@ export default function AMathGame() {
     // Generate all possible combinations for an expression with blanks and dual operators
     const generateExpressionCombinations = (tiles: MathTile[]): string[] => {
       const combinations: string[] = ['']
-      
+
       for (const tile of tiles) {
         const newCombinations: string[] = []
-        
+
         if (tile.symbol === 'blank') {
           // Blank can be any symbol: 0-20, +, -, ×, ÷, =
           const possibleSymbols = [
@@ -287,7 +295,7 @@ export default function AMathGame() {
             '11', '12', '13', '14', '15', '16', '17', '18', '19', '20',
             '+', '-', '×', '÷', '='
           ]
-          
+
           for (const combo of combinations) {
             for (const symbol of possibleSymbols) {
               newCombinations.push(combo + symbol)
@@ -311,26 +319,26 @@ export default function AMathGame() {
             newCombinations.push(combo + tile.symbol)
           }
         }
-        
+
         combinations.length = 0
         combinations.push(...newCombinations)
       }
-      
+
       return combinations
     }
 
     // Check if an equation string is valid (has = and both sides evaluate correctly)
     const isValidEquation = (tiles: MathTile[]): boolean => {
       const expressions = generateExpressionCombinations(tiles)
-      
+
       for (const expression of expressions) {
         const parts = expression.split('=')
         if (parts.length < 2) continue
-        
+
         try {
           const leftSide = evaluateExpression(parts[0].trim())
           const rightSide = evaluateExpression(parts[1].trim())
-          
+
           if (leftSide !== null && rightSide !== null) {
             if (Math.abs(leftSide - rightSide) < 0.0001) { // Handle floating point precision
               return true
@@ -340,7 +348,7 @@ export default function AMathGame() {
           continue
         }
       }
-      
+
       return false
     }
 
@@ -454,63 +462,48 @@ export default function AMathGame() {
   return (
     <DndProvider backend={isMobile ? TouchBackend : HTML5Backend}>
       <CustomDragLayer />
-      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            p: 2,
-            borderRadius: 2,
-            bgcolor: "#f5f5f5",
-            boxShadow: 1,
-          }}
-        >
-          <Typography variant="h5" gutterBottom>
-            Score: {score}
-          </Typography>
-          <Box sx={{ display: "flex", gap: 2 }}>
-            <Button variant="contained" color="primary" onClick={refillTray}>
-              Refill Tray
-            </Button>
-            <Button variant="outlined" color="secondary" onClick={resetGame}>
-              Reset Game
-            </Button>
+      <Box sx={{ display: "flex", gap: 3, alignItems: "flex-start", justifyContent: "center", flexWrap: "wrap" }}>
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+          <Board
+            boardTiles={boardTiles}
+            onTileDrop={handleTileDrop}
+            placedWords={placedEquations}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          />
+
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            {/* Shuffle */}
+            <BoardActionButton
+              // onClick={handleShuffleTiles}
+              icon={<Shuffle size={20} />}
+              ariaLabel="Shuffle tiles"
+            />
+
+            <Box sx={{ textAlign: "center" }}>
+              <Tray
+                tiles={trayTiles}
+                onTileDrop={handleTrayTileDrop}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+              />
+            </Box>
+
+            {/* Clear / Undo */}
+            <BoardActionButton
+              // onClick={handleClearBoard}
+              // disabled={currentTurnTiles.length === 0}
+              icon={<RotateCcw size={20} />}
+              ariaLabel="Clear board"
+            />
+
           </Box>
+
         </Box>
 
-        <Board 
-          boardTiles={boardTiles} 
-          onTileDrop={handleTileDrop} 
-          placedWords={placedEquations} 
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        />
-
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          {/* Shuffle */}
-          <BoardActionButton
-            // onClick={handleShuffleTiles}
-            icon={<Shuffle size={20} />}
-            ariaLabel="Shuffle tiles"
-          />
-
-          <Box sx={{ textAlign: "center" }}>
-            <Tray 
-              tiles={trayTiles} 
-              onTileDrop={handleTrayTileDrop}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            />
-          </Box>
-
-          {/* Clear / Undo */}
-          <BoardActionButton
-            // onClick={handleClearBoard}
-            // disabled={currentTurnTiles.length === 0}
-            icon={<RotateCcw size={20} />}
-            ariaLabel="Clear board"
-          />
+        {/* Scoreboard */}
+        <Box sx={{ minWidth: 300 }}>
+          <Scoreboard players={players} currentTurn={currentTurn} />
         </Box>
       </Box>
     </DndProvider>

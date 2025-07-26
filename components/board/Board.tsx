@@ -354,8 +354,7 @@ export default function Board({ boardTiles, onTileDrop, placedWords, onDragStart
                 // const badgePosition = isHorizontal ? { right: -10, top: -10 } : { right: -10, top: -10 }
                 const badgePosition = { right: -10, top: -10 };
 
-                // Choose colors based on equation validity
-                const borderColor = word.isValid ? "#4caf50" : "#f44336"; // green for valid, red for invalid
+                const borderColor = word.isValid ? "#4caf50" : "#f44336";
                 const badgeColor = word.isValid ? "#4caf50" : "#f44336";
 
                 const key = `word-${wordIndex}`
