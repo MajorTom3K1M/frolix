@@ -354,6 +354,10 @@ export default function Board({ boardTiles, onTileDrop, placedWords, onDragStart
                 // const badgePosition = isHorizontal ? { right: -10, top: -10 } : { right: -10, top: -10 }
                 const badgePosition = { right: -10, top: -10 };
 
+                // Choose colors based on equation validity
+                const borderColor = word.isValid ? "#4caf50" : "#f44336"; // green for valid, red for invalid
+                const badgeColor = word.isValid ? "#4caf50" : "#f44336";
+
                 const key = `word-${wordIndex}`
                 return (
                     <Box
@@ -363,7 +367,7 @@ export default function Board({ boardTiles, onTileDrop, placedWords, onDragStart
                             width: `${width}px`,
                             height: `${height}px`,
                             gridArea: `${minRow + 1}/${minCol + 1}/${maxRow + 2}/${maxCol + 2}`,
-                            border: "2px solid #4caf50",
+                            border: `2px solid ${borderColor}`,
                             borderRadius: "6px",
                             pointerEvents: "none",
                             zIndex: 10,
@@ -373,7 +377,7 @@ export default function Board({ boardTiles, onTileDrop, placedWords, onDragStart
                             sx={{
                                 position: "absolute",
                                 ...badgePosition,
-                                backgroundColor: "#4caf50",
+                                backgroundColor: badgeColor,
                                 color: "white",
                                 borderRadius: "50%",
                                 width: 24,

@@ -273,20 +273,75 @@ export default function AMathGame() {
       }
     }
 
-    // Check if an equation string is valid (has = and both sides evaluate correctly)
-    const isValidEquation = (equationStr: string): boolean => {
-      const parts = equationStr.split('=')
-      if (parts.length < 2) return false
+    // Generate all possible combinations for an expression with blanks and dual operators
+    const generateExpressionCombinations = (tiles: MathTile[]): string[] => {
+      const combinations: string[] = ['']
       
-      try {
-        const leftSide = evaluateExpression(parts[0].trim())
-        const rightSide = evaluateExpression(parts[1].trim())
+      for (const tile of tiles) {
+        const newCombinations: string[] = []
         
-        if (leftSide === null || rightSide === null) return false
-        return Math.abs(leftSide - rightSide) < 0.0001 // Handle floating point precision
-      } catch {
-        return false
+        if (tile.symbol === 'blank') {
+          // Blank can be any symbol: 0-20, +, -, ×, ÷, =
+          const possibleSymbols = [
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
+            '11', '12', '13', '14', '15', '16', '17', '18', '19', '20',
+            '+', '-', '×', '÷', '='
+          ]
+          
+          for (const combo of combinations) {
+            for (const symbol of possibleSymbols) {
+              newCombinations.push(combo + symbol)
+            }
+          }
+        } else if (tile.symbol === '±') {
+          // ± can be either + or -
+          for (const combo of combinations) {
+            newCombinations.push(combo + '+')
+            newCombinations.push(combo + '-')
+          }
+        } else if (tile.symbol === '×/÷') {
+          // ×/÷ can be either × or ÷
+          for (const combo of combinations) {
+            newCombinations.push(combo + '×')
+            newCombinations.push(combo + '÷')
+          }
+        } else {
+          // Regular tile
+          for (const combo of combinations) {
+            newCombinations.push(combo + tile.symbol)
+          }
+        }
+        
+        combinations.length = 0
+        combinations.push(...newCombinations)
       }
+      
+      return combinations
+    }
+
+    // Check if an equation string is valid (has = and both sides evaluate correctly)
+    const isValidEquation = (tiles: MathTile[]): boolean => {
+      const expressions = generateExpressionCombinations(tiles)
+      
+      for (const expression of expressions) {
+        const parts = expression.split('=')
+        if (parts.length < 2) continue
+        
+        try {
+          const leftSide = evaluateExpression(parts[0].trim())
+          const rightSide = evaluateExpression(parts[1].trim())
+          
+          if (leftSide !== null && rightSide !== null) {
+            if (Math.abs(leftSide - rightSide) < 0.0001) { // Handle floating point precision
+              return true
+            }
+          }
+        } catch {
+          continue
+        }
+      }
+      
+      return false
     }
 
     // First, try to find horizontal equations
@@ -314,9 +369,10 @@ export default function AMathGame() {
           visited.add(pos)
         } else if (!hasTile(pos) && currentEquation) {
           // End of equation
-          if (currentEquation.tiles.length >= 3 && isValidEquation(currentEquation.expression)) {
-            currentEquation.score = calculateEquationScore(currentEquation.tiles, currentEquation.positions)
-            currentEquation.isValid = true
+          if (currentEquation.tiles.length >= 3) {
+            const isValid = isValidEquation(currentEquation.tiles)
+            currentEquation.score = isValid ? calculateEquationScore(currentEquation.tiles, currentEquation.positions) : 0
+            currentEquation.isValid = isValid
             equations.push(currentEquation)
           }
           currentEquation = null
@@ -324,9 +380,10 @@ export default function AMathGame() {
       }
 
       // Check if equation ends at the edge of the board
-      if (currentEquation && currentEquation.tiles.length >= 3 && isValidEquation(currentEquation.expression)) {
-        currentEquation.score = currentEquation.tiles.reduce((sum: number, tile: MathTile) => sum + tile.value, 0)
-        currentEquation.isValid = true
+      if (currentEquation && currentEquation.tiles.length >= 3) {
+        const isValid = isValidEquation(currentEquation.tiles)
+        currentEquation.score = isValid ? calculateEquationScore(currentEquation.tiles, currentEquation.positions) : 0
+        currentEquation.isValid = isValid
         equations.push(currentEquation)
       }
     }
@@ -358,9 +415,10 @@ export default function AMathGame() {
           visited.add(pos)
         } else if (!hasTile(pos) && currentEquation) {
           // End of equation
-          if (currentEquation.tiles.length >= 3 && isValidEquation(currentEquation.expression)) {
-            currentEquation.score = calculateEquationScore(currentEquation.tiles, currentEquation.positions)
-            currentEquation.isValid = true
+          if (currentEquation.tiles.length >= 3) {
+            const isValid = isValidEquation(currentEquation.tiles)
+            currentEquation.score = isValid ? calculateEquationScore(currentEquation.tiles, currentEquation.positions) : 0
+            currentEquation.isValid = isValid
             equations.push(currentEquation)
           }
           currentEquation = null
@@ -368,17 +426,18 @@ export default function AMathGame() {
       }
 
       // Check if equation ends at the edge of the board
-      if (currentEquation && currentEquation.tiles.length >= 3 && isValidEquation(currentEquation.expression)) {
-        currentEquation.score = currentEquation.tiles.reduce((sum: number, tile: MathTile) => sum + tile.value, 0)
-        currentEquation.isValid = true
+      if (currentEquation && currentEquation.tiles.length >= 3) {
+        const isValid = isValidEquation(currentEquation.tiles)
+        currentEquation.score = isValid ? calculateEquationScore(currentEquation.tiles, currentEquation.positions) : 0
+        currentEquation.isValid = isValid
         equations.push(currentEquation)
       }
     }
 
     setPlacedEquations(equations)
 
-    // Calculate total score
-    const totalScore = equations.reduce((sum, eq) => sum + eq.score, 0)
+    // Calculate total score (only valid equations)
+    const totalScore = equations.filter(eq => eq.isValid).reduce((sum, eq) => sum + eq.score, 0)
     setScore(totalScore)
   }
 
