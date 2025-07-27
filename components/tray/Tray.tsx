@@ -6,8 +6,48 @@ import { LetterTile, MathTile } from "@/types/tiles"
 import { ConnectableElement, useDrop } from "react-dnd"
 import TrayTile from "@/components/tray/TrayTile"
 
+interface EmptyTraySlotProps {
+    index: number
+    onDrop: (tile: (LetterTile | MathTile) & { position?: string }, index: number) => void
+}
+
+function EmptyTraySlot({ index, onDrop }: EmptyTraySlotProps) {
+    const [{ isOver }, dropRef] = useDrop({
+        accept: "MATH_TILE",
+        drop: (item: (LetterTile | MathTile) & { position?: string }) => {
+            onDrop(item, index)
+        },
+        collect: (monitor) => ({
+            isOver: monitor.isOver(),
+        }),
+    })
+
+    const refCallback = useCallback(
+        (el: ConnectableElement | null) => { if (el) dropRef(el); },
+        [dropRef]
+    );
+
+    return (
+        <Box
+            ref={refCallback}
+            sx={{
+                width: 40,
+                height: 40,
+                border: "2px dashed #999",
+                borderRadius: "4px",
+                backgroundColor: isOver ? "rgba(0, 0, 0, 0.1)" : "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "background-color 0.2s",
+                margin: "0 4px",
+            }}
+        />
+    )
+}
+
 interface MathTrayProps {
-    tiles: (LetterTile | MathTile)[]
+    tiles: (LetterTile | MathTile | null)[]
     onTileDrop: (tile: (LetterTile | MathTile) & { position?: string }, index: number) => void
     onDragStart: (tileId: string) => void
     onDragEnd: () => void
@@ -46,8 +86,10 @@ export default function MathTray({ tiles, onTileDrop, onDragStart, onDragEnd }: 
     const [, dropRef] = useDrop({
         accept: "MATH_TILE",
         drop: (item: (LetterTile | MathTile) & { position?: string }) => {
-            if (!tiles.find((t) => t.id === item.id)) {
-                onTileDrop(item, tiles.length)
+            // Find the first empty slot for general tray drops
+            const firstEmptyIndex = tiles.findIndex(tile => tile === null)
+            if (firstEmptyIndex !== -1) {
+                onTileDrop(item, firstEmptyIndex)
             }
         },
     })
@@ -97,17 +139,30 @@ export default function MathTray({ tiles, onTileDrop, onDragStart, onDragEnd }: 
                     height: "100%",
                 }}
             >
-                {tiles.map((tile, index) => (
-                    <TrayTile
-                        key={tile.id}
-                        tile={tile}
-                        index={index}
-                        styles={TILE_DRAG_STYLES}
-                        onDrop={onTileDrop}
-                        onDragStart={onDragStart}
-                        onDragEnd={onDragEnd}
-                    />
-                ))}
+                {Array.from({ length: 8 }, (_, index) => {
+                    const tile = tiles[index]
+                    if (tile) {
+                        return (
+                            <TrayTile
+                                key={tile.id}
+                                tile={tile}
+                                index={index}
+                                styles={TILE_DRAG_STYLES}
+                                onDrop={onTileDrop}
+                                onDragStart={onDragStart}
+                                onDragEnd={onDragEnd}
+                            />
+                        )
+                    } else {
+                        return (
+                            <EmptyTraySlot
+                                key={`empty-${index}`}
+                                index={index}
+                                onDrop={onTileDrop}
+                            />
+                        )
+                    }
+                })}
             </Box>
         </Paper>
     )

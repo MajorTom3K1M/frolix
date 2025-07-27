@@ -101,7 +101,7 @@ const generateRandomMathTiles = (count: number, fromPool?: string[]): MathTile[]
 export default function AMathGame() {
   const isMobile = useMobile()
   const [score, setScore] = useState(0)
-  const [trayTiles, setTrayTiles] = useState<MathTile[]>([])
+  const [trayTiles, setTrayTiles] = useState<(MathTile | null)[]>(Array(8).fill(null))
   const [boardTiles, setBoardTiles] = useState<Record<string, MathTile & { position?: string }>>({})
   const [placedEquations, setPlacedEquations] = useState<any[]>([])
   const [draggingTileId, setDraggingTileId] = useState<string | null>(null)
@@ -145,9 +145,16 @@ export default function AMathGame() {
       return prev
     });
 
-    // 2) If it lived in the tray (no `tile.position`), remove it from there
+    // 2) If it lived in the tray (no `tile.position`), remove it from there but maintain fixed positions
     if (!tile.position) {
-      setTrayTiles((prev) => prev.filter((t) => t.id !== tile.id))
+      setTrayTiles((prev) => {
+        const newTray = [...prev]
+        const tileIndex = newTray.findIndex((t) => t && t.id === tile.id)
+        if (tileIndex !== -1) {
+          newTray[tileIndex] = null // Leave empty slot instead of removing
+        }
+        return newTray
+      })
     }
 
     // 3) Finally, add it (or re‑add it) to the new board cell
@@ -158,6 +165,7 @@ export default function AMathGame() {
   }, [setTrayTiles, setBoardTiles]);
 
   const handleTrayTileDrop = useCallback((tile: (MathTile | LetterTile) & { position?: string }, index: number) => {
+    // Remove tile from board if it came from there
     if (tile.position) {
       setBoardTiles((prev) => {
         const updated = { ...prev };
@@ -168,18 +176,19 @@ export default function AMathGame() {
 
     setTrayTiles((prev) => {
       const newTray = [...prev];
-      const currentIndex = newTray.findIndex((t) => t.id === tile.id);
+      const currentIndex = newTray.findIndex((t) => t && t.id === tile.id);
       const trayTile = { ...tile } as MathTile & { position?: string };
       if (trayTile.position) {
         delete trayTile.position;
       }
+      
+      // If tile is already in tray, remove it from current position
       if (currentIndex !== -1) {
-        const temp = newTray[index];
-        newTray[index] = trayTile;
-        newTray[currentIndex] = temp;
-      } else {
-        newTray.splice(index, 0, trayTile);
+        newTray[currentIndex] = null;
       }
+      
+      // Place tile at exact drop position
+      newTray[index] = trayTile;
       return newTray;
     });
   }, [setTrayTiles, setBoardTiles]);
@@ -202,11 +211,23 @@ export default function AMathGame() {
 
   // Refill the tray with new tiles
   const refillTray = () => {
-    const currentCount = trayTiles.length
-    if (currentCount < 8 && tilePool.length > 0) {
-      const tilesToDraw = Math.min(8 - currentCount, tilePool.length)
+    const emptySlots = trayTiles.filter(tile => tile === null).length
+    if (emptySlots > 0 && tilePool.length > 0) {
+      const tilesToDraw = Math.min(emptySlots, tilePool.length)
       const newTiles = generateRandomMathTiles(tilesToDraw, tilePool)
-      setTrayTiles((prev) => [...prev, ...newTiles])
+      
+      setTrayTiles((prev) => {
+        const newTray = [...prev]
+        let tileIndex = 0
+        // Fill empty slots from left to right
+        for (let i = 0; i < newTray.length && tileIndex < newTiles.length; i++) {
+          if (newTray[i] === null) {
+            newTray[i] = newTiles[tileIndex]
+            tileIndex++
+          }
+        }
+        return newTray
+      })
       
       // Update tile pool
       const usedSymbols = newTiles.map(tile => tile.symbol)
@@ -226,7 +247,13 @@ export default function AMathGame() {
     const initialPool = createAMathTilePool()
     setTilePool(initialPool)
     const newTiles = generateRandomMathTiles(8, initialPool)
-    setTrayTiles(newTiles)
+    
+    // Create fixed 8-position array with tiles
+    const trayArray: (MathTile | null)[] = Array(8).fill(null)
+    newTiles.forEach((tile, index) => {
+      trayArray[index] = tile
+    })
+    setTrayTiles(trayArray)
     
     // Update tile pool to reflect drawn tiles
     const usedSymbols = newTiles.map(tile => tile.symbol)
