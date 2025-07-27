@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { DndProvider } from "react-dnd"
 import { HTML5Backend } from "react-dnd-html5-backend"
 import { TouchBackend } from "react-dnd-touch-backend"
-import { Box, Typography, Button } from "@mui/material"
+import { Box, Typography, Button, ButtonGroup, Dialog, DialogTitle, DialogContent, DialogActions, Alert } from "@mui/material"
 
 import Board from "@/components/board/Board";
 import Tray from "@/components/tray/Tray";
@@ -118,6 +118,10 @@ export default function AMathGame() {
     { id: 1, name: "Player 1", score: 0, isActive: false, tiles: [] },
     { id: 2, name: "Player 2", score: 0, isActive: false, tiles: [] },
   ])
+  const [selectedTilesForSwap, setSelectedTilesForSwap] = useState<string[]>([])
+  const [isSwapMode, setIsSwapMode] = useState(false)
+  const [passCount, setPassCount] = useState(0)
+  const [gameEnded, setGameEnded] = useState(false)
 
   useEffect(() => {
     const initialPool = createAMathTilePool()
@@ -209,6 +213,114 @@ export default function AMathGame() {
     setTurnHistory(prev => [...prev, newTurn])
   }
 
+  // Toggle tile selection for swap
+  const toggleTileSelection = (tileId: string) => {
+    setSelectedTilesForSwap(prev => 
+      prev.includes(tileId) 
+        ? prev.filter(id => id !== tileId)
+        : [...prev, tileId]
+    )
+  }
+
+  // Swap selected tiles
+  const handleSwapTiles = () => {
+    if (selectedTilesForSwap.length === 0 || tilePool.length < 5) return
+
+    // Get selected tiles and their symbols
+    const tilesToSwap = selectedTilesForSwap.map(tileId => 
+      trayTiles.find(tile => tile && tile.id === tileId)
+    ).filter(Boolean) as MathTile[]
+
+    // Add selected tile symbols back to pool
+    const updatedPool = [...tilePool]
+    tilesToSwap.forEach(tile => {
+      updatedPool.push(tile.symbol)
+    })
+
+    // Remove selected tiles from tray
+    setTrayTiles(prev => {
+      const newTray = [...prev]
+      selectedTilesForSwap.forEach(tileId => {
+        const index = newTray.findIndex(tile => tile && tile.id === tileId)
+        if (index !== -1) {
+          newTray[index] = null
+        }
+      })
+      return newTray
+    })
+
+    // Draw new tiles
+    const newTiles = generateRandomMathTiles(tilesToSwap.length, updatedPool)
+    const finalPool = [...updatedPool]
+    newTiles.forEach(tile => {
+      const index = finalPool.indexOf(tile.symbol)
+      if (index > -1) finalPool.splice(index, 1)
+    })
+
+    // Place new tiles in tray
+    setTrayTiles(prev => {
+      const newTray = [...prev]
+      let tileIndex = 0
+      for (let i = 0; i < newTray.length && tileIndex < newTiles.length; i++) {
+        if (newTray[i] === null) {
+          newTray[i] = newTiles[tileIndex]
+          tileIndex++
+        }
+      }
+      return newTray
+    })
+
+    setTilePool(finalPool)
+    setSelectedTilesForSwap([])
+    setIsSwapMode(false)
+    setPassCount(0) // Reset pass count when action is taken
+    
+    // Add to turn history
+    addTurnToHistory(`Swapped ${tilesToSwap.length} tiles`, 0)
+  }
+
+  // Submit equation functionality
+  const handleSubmitEquation = () => {
+    // Check if there are tiles placed on board in current turn
+    const currentTurnTiles = Object.values(boardTiles).filter(tile => 
+      // Add logic to track current turn tiles if needed
+      true
+    )
+
+    if (currentTurnTiles.length === 0) {
+      alert("Place tiles on the board to form an equation first!")
+      return
+    }
+
+    // The equation detection already runs automatically
+    // This button confirms the turn and triggers scoring
+    detectEquationsAndUpdateScore()
+    setPassCount(0) // Reset pass count when action is taken
+    
+    // Refill tray
+    refillTray()
+  }
+
+  // Pass turn functionality
+  const handlePass = () => {
+    const newPassCount = passCount + 1
+    setPassCount(newPassCount)
+    
+    // Check for game end (6 consecutive passes)
+    if (newPassCount >= 6) {
+      setGameEnded(true)
+      addTurnToHistory("Game ended - consecutive passes", 0)
+    } else {
+      addTurnToHistory("Passed turn", 0)
+    }
+  }
+
+  // Resign functionality
+  const handleResign = () => {
+    setGameEnded(true)
+    addTurnToHistory("Resigned", 0)
+  }
+
   // Refill the tray with new tiles
   const refillTray = () => {
     const emptySlots = trayTiles.filter(tile => tile === null).length
@@ -268,6 +380,10 @@ export default function AMathGame() {
     setPlacedEquations([])
     setScore(0)
     setTurnHistory([])
+    setSelectedTilesForSwap([])
+    setIsSwapMode(false)
+    setPassCount(0)
+    setGameEnded(false)
   }
 
   const getBoardSquareType = (position: string): SquareType => {
@@ -673,7 +789,82 @@ export default function AMathGame() {
                 onTileDrop={handleTrayTileDrop}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
+                isSwapMode={isSwapMode}
+                selectedTiles={selectedTilesForSwap}
+                onTileSelect={toggleTileSelection}
               />
+              
+              {/* Game Action Buttons */}
+              <Box sx={{ mt: 2, display: "flex", gap: 1, flexWrap: "wrap", justifyContent: "center" }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setIsSwapMode(!isSwapMode)}
+                  sx={{ 
+                    bgcolor: isSwapMode ? "primary.light" : "transparent",
+                    color: isSwapMode ? "white" : "primary.main"
+                  }}
+                >
+                  {isSwapMode ? "Cancel Swap" : "Swap Tiles"}
+                </Button>
+                
+                {isSwapMode && (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={handleSwapTiles}
+                    disabled={selectedTilesForSwap.length === 0 || tilePool.length < 5}
+                    sx={{ bgcolor: "warning.main" }}
+                  >
+                    Confirm Swap ({selectedTilesForSwap.length})
+                  </Button>
+                )}
+                
+                {!isSwapMode && (
+                  <>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={handleSubmitEquation}
+                      disabled={Object.keys(boardTiles).length === 0}
+                      sx={{ bgcolor: "success.main" }}
+                    >
+                      Submit Equation
+                    </Button>
+                    
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={handlePass}
+                      sx={{ color: "text.secondary" }}
+                    >
+                      Pass
+                    </Button>
+                    
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={handleResign}
+                      sx={{ color: "error.main", borderColor: "error.main" }}
+                    >
+                      Resign
+                    </Button>
+                  </>
+                )}
+              </Box>
+              
+              {/* Game Status Messages */}
+              {isSwapMode && (
+                <Alert severity="info" sx={{ mt: 1, maxWidth: 400, mx: "auto" }}>
+                  Click tiles to select for swapping. Need at least 5 tiles in bag.
+                </Alert>
+              )}
+              
+              {tilePool.length < 5 && (
+                <Alert severity="warning" sx={{ mt: 1, maxWidth: 400, mx: "auto" }}>
+                  Less than 5 tiles remaining - cannot swap tiles.
+                </Alert>
+              )}
             </Box>
 
             {/* Clear / Undo */}
@@ -698,6 +889,37 @@ export default function AMathGame() {
           />
         </Box>
       </Box>
+      
+      {/* Game End Dialog */}
+      <Dialog open={gameEnded} maxWidth="sm" fullWidth>
+        <DialogTitle>Game Over</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" gutterBottom>
+            The game has ended!
+          </Typography>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="h6">Final Scores:</Typography>
+            {players.map(player => (
+              <Typography key={player.id} variant="body1">
+                {player.name}: {player.score} points
+              </Typography>
+            ))}
+          </Box>
+          {passCount >= 6 && (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              Game ended due to consecutive passes.
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setGameEnded(false)
+            resetGame()
+          }} variant="contained">
+            New Game
+          </Button>
+        </DialogActions>
+      </Dialog>
     </DndProvider>
   )
 }

@@ -51,6 +51,9 @@ interface MathTrayProps {
     onTileDrop: (tile: (LetterTile | MathTile) & { position?: string }, index: number) => void
     onDragStart: (tileId: string) => void
     onDragEnd: () => void
+    isSwapMode?: boolean
+    selectedTiles?: string[]
+    onTileSelect?: (tileId: string) => void
 }
 
 const TILE_DRAG_STYLES: SxProps = {
@@ -64,7 +67,7 @@ const TILE_DRAG_STYLES: SxProps = {
     },
 }
 
-export default function MathTray({ tiles, onTileDrop, onDragStart, onDragEnd }: MathTrayProps) {
+export default function MathTray({ tiles, onTileDrop, onDragStart, onDragEnd, isSwapMode = false, selectedTiles = [], onTileSelect }: MathTrayProps) {
     const [trayWidth, setTrayWidth] = useState(360)
 
     // Fixed tray width sized for maximum 8 tiles
@@ -142,16 +145,32 @@ export default function MathTray({ tiles, onTileDrop, onDragStart, onDragEnd }: 
                 {Array.from({ length: 8 }, (_, index) => {
                     const tile = tiles[index]
                     if (tile) {
+                        const isSelected = selectedTiles.includes(tile.id)
+                        const tileStyles = {
+                            ...TILE_DRAG_STYLES,
+                            ...(isSelected && {
+                                border: "3px solid #2196f3",
+                                backgroundColor: "rgba(33, 150, 243, 0.1)",
+                            }),
+                            ...(isSwapMode && {
+                                cursor: "pointer",
+                            })
+                        }
+                        
                         return (
-                            <TrayTile
+                            <Box
                                 key={tile.id}
-                                tile={tile}
-                                index={index}
-                                styles={TILE_DRAG_STYLES}
-                                onDrop={onTileDrop}
-                                onDragStart={onDragStart}
-                                onDragEnd={onDragEnd}
-                            />
+                                onClick={isSwapMode ? () => onTileSelect?.(tile.id) : undefined}
+                            >
+                                <TrayTile
+                                    tile={tile}
+                                    index={index}
+                                    styles={tileStyles}
+                                    onDrop={onTileDrop}
+                                    onDragStart={onDragStart}
+                                    onDragEnd={onDragEnd}
+                                />
+                            </Box>
                         )
                     } else {
                         return (
