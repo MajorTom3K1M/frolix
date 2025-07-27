@@ -253,35 +253,45 @@ export default function AMathGame() {
     // Helper function to evaluate a mathematical expression for A-Math
     const evaluateExpression = (expression: string): number | null => {
       try {
-        // Handle A-Math operators and numbers 0-20
+        // Handle A-Math operators and concatenated digits
         let processed = expression
           .replace(/×/g, '*')  // Convert × to *
           .replace(/÷/g, '/')  // Convert ÷ to /
           .replace(/\s+/g, '') // Remove spaces
 
-        // Handle dual operators (±, ×/÷) by resolving them to their chosen values
-        // For now, we'll need to handle this in the tile placement logic
+        // Handle leading zeros in numbers (05 -> 5, but keep single 0)
+        processed = processed.replace(/\b0+(\d+)/g, '$1') // Remove leading zeros from multi-digit numbers
+        processed = processed.replace(/\b0+(?=\D|$)/g, '0') // Keep standalone zeros
 
-        // Validate only allowed characters: numbers 0-20, +, -, *, /, (, )
+        // Validate only allowed characters: numbers, +, -, *, /, (, )
         if (!/^[0-9+\-*/().]+$/.test(processed)) return null
 
-        // Additional validation for numbers up to 20
+        // Check for division by zero
+        if (/\/0(?!\d)/.test(processed)) return null
+
+        // Additional validation: no numbers greater than reasonable concatenated digits
+        // Allow larger numbers since we can concatenate (e.g., 123 from tiles 1,2,3)
         const numberMatches = processed.match(/\d+/g)
         if (numberMatches) {
           for (const num of numberMatches) {
-            if (parseInt(num) > 20) return null
+            // Allow numbers up to reasonable concatenated values (e.g., up to 999)
+            if (parseInt(num) > 999) return null
           }
         }
 
         // Use Function constructor for safe evaluation
         const result = new Function(`"use strict"; return (${processed})`)()
-        return typeof result === 'number' && !isNaN(result) ? result : null
+        
+        // Check if result is a valid number (not NaN, not Infinity)
+        if (typeof result !== 'number' || isNaN(result) || !isFinite(result)) return null
+        
+        return result
       } catch {
         return null
       }
     }
 
-    // Generate all possible combinations for an expression with blanks and dual operators
+    // Generate all possible combinations for an expression with blanks, dual operators, and digit concatenation
     const generateExpressionCombinations = (tiles: MathTile[]): string[] => {
       const combinations: string[] = ['']
 
@@ -289,13 +299,8 @@ export default function AMathGame() {
         const newCombinations: string[] = []
 
         if (tile.symbol === 'blank') {
-          // Blank can be any symbol: 0-20, +, -, ×, ÷, =
-          const possibleSymbols = [
-            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
-            '11', '12', '13', '14', '15', '16', '17', '18', '19', '20',
-            '+', '-', '×', '÷', '='
-          ]
-
+          // Blank can be any symbol: 0-9, +, -, ×, ÷, =
+          const possibleSymbols = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '×', '÷', '=']
           for (const combo of combinations) {
             for (const symbol of possibleSymbols) {
               newCombinations.push(combo + symbol)
@@ -314,7 +319,7 @@ export default function AMathGame() {
             newCombinations.push(combo + '÷')
           }
         } else {
-          // Regular tile
+          // Regular tile - multi-digit tiles (10-20) stay as single units, only 0-9 can be concatenated
           for (const combo of combinations) {
             newCombinations.push(combo + tile.symbol)
           }
@@ -324,7 +329,105 @@ export default function AMathGame() {
         combinations.push(...newCombinations)
       }
 
-      return combinations
+      // Now generate all possible digit concatenations from the base combinations
+      const allPossibleExpressions = new Set<string>()
+      
+      for (const expression of combinations) {
+        // Generate all possible ways to concatenate consecutive digits
+        const concatenatedVersions = generateDigitConcatenations(expression)
+        concatenatedVersions.forEach(version => allPossibleExpressions.add(version))
+      }
+
+      return Array.from(allPossibleExpressions)
+    }
+
+    // Generate all possible digit concatenations for a given expression
+    // Only single digits (0-9) can be concatenated, multi-digit numbers (10-20) stay as units
+    const generateDigitConcatenations = (expression: string): string[] => {
+      const results = new Set<string>()
+      results.add(expression) // Always include the original
+
+      // Parse the expression into tokens (numbers and operators)
+      const tokens: string[] = []
+      let currentToken = ''
+      
+      for (let i = 0; i < expression.length; i++) {
+        const char = expression[i]
+        if (/[+\-×÷=]/.test(char)) {
+          if (currentToken) {
+            tokens.push(currentToken)
+            currentToken = ''
+          }
+          tokens.push(char)
+        } else {
+          currentToken += char
+        }
+      }
+      if (currentToken) {
+        tokens.push(currentToken)
+      }
+
+      // Find positions where single digits can be concatenated
+      const concatenationPoints: number[] = []
+      for (let i = 0; i < tokens.length - 1; i++) {
+        const current = tokens[i]
+        const next = tokens[i + 1]
+        
+        // Only concatenate if both are single digits (0-9)
+        if (/^[0-9]$/.test(current) && /^[0-9]$/.test(next)) {
+          concatenationPoints.push(i)
+        }
+      }
+
+      // Generate all possible combinations of concatenations
+      const numPoints = concatenationPoints.length
+      for (let mask = 0; mask < (1 << numPoints); mask++) {
+        const newTokens = [...tokens]
+        const toRemove: number[] = []
+
+        // Apply concatenations based on mask
+        for (let i = 0; i < numPoints; i++) {
+          if (mask & (1 << i)) {
+            const pos = concatenationPoints[i]
+            // Concatenate token at pos with token at pos+1
+            newTokens[pos] = newTokens[pos] + newTokens[pos + 1]
+            toRemove.push(pos + 1)
+          }
+        }
+
+        // Remove concatenated tokens (in reverse order to maintain indices)
+        toRemove.sort((a, b) => b - a)
+        for (const index of toRemove) {
+          newTokens.splice(index, 1)
+        }
+
+        const result = newTokens.join('')
+        if (isValidConcatenatedExpression(result)) {
+          results.add(result)
+        }
+      }
+
+      return Array.from(results)
+    }
+
+    // Validate a concatenated expression
+    const isValidConcatenatedExpression = (expression: string): boolean => {
+      // Split by operators to get numbers
+      const numbers = expression.split(/[+\-×÷=]/)
+      
+      for (const num of numbers) {
+        const trimmed = num.trim()
+        if (trimmed === '') continue
+        
+        // Check for invalid patterns
+        if (trimmed === '00') return false // Cannot form 00
+        if (trimmed.length > 1 && trimmed.startsWith('0') && trimmed !== '0') {
+          // Leading zeros are allowed in A-Math (05 = 5), so this is actually valid
+          continue
+        }
+      }
+      
+      return true
     }
 
     // Check if an equation string is valid (has = and both sides evaluate correctly)
