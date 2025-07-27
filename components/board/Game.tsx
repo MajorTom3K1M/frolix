@@ -71,11 +71,11 @@ const createAMathTilePool = (): string[] => {
   return pool
 }
 
-const generateRandomMathTiles = (count: number): MathTile[] => {
-  const tilePool = createAMathTilePool()
+const generateRandomMathTiles = (count: number, fromPool?: string[]): MathTile[] => {
+  const tilePool = fromPool ? [...fromPool] : createAMathTilePool()
   const result: MathTile[] = []
 
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < count && tilePool.length > 0; i++) {
     const randomIndex = Math.floor(Math.random() * tilePool.length)
     const symbol = tilePool.splice(randomIndex, 1)[0] // Remove from pool to avoid duplicates
 
@@ -106,13 +106,32 @@ export default function AMathGame() {
   const [placedEquations, setPlacedEquations] = useState<any[]>([])
   const [draggingTileId, setDraggingTileId] = useState<string | null>(null)
   const [currentTurn, setCurrentTurn] = useState(1)
+  const [turnHistory, setTurnHistory] = useState<Array<{
+    turn: number
+    player: string
+    equation: string
+    score: number
+    timestamp: Date
+  }>>([])
+  const [tilePool, setTilePool] = useState<string[]>([])
   const [players, setPlayers] = useState<(Player & { tiles: any[] })[]>([
     { id: 1, name: "Player 1", score: 0, isActive: false, tiles: [] },
     { id: 2, name: "Player 2", score: 0, isActive: false, tiles: [] },
   ])
 
   useEffect(() => {
-    setTrayTiles(generateRandomMathTiles(8))
+    const initialPool = createAMathTilePool()
+    setTilePool(initialPool)
+    const newTiles = generateRandomMathTiles(8, initialPool)
+    setTrayTiles(newTiles)
+    // Update tile pool to reflect drawn tiles
+    const usedSymbols = newTiles.map(tile => tile.symbol)
+    const updatedPool = [...initialPool]
+    for (const symbol of usedSymbols) {
+      const index = updatedPool.indexOf(symbol)
+      if (index > -1) updatedPool.splice(index, 1)
+    }
+    setTilePool(updatedPool)
   }, []);
 
   const handleTileDrop = useCallback((tile: MathTile & { position?: string }, newPosition: string) => {
@@ -169,21 +188,59 @@ export default function AMathGame() {
     detectEquationsAndUpdateScore()
   }, [boardTiles, draggingTileId])
 
+  // Add turn to history
+  const addTurnToHistory = (equation: string, scoreEarned: number) => {
+    const newTurn = {
+      turn: turnHistory.length + 1,
+      player: `Player ${currentTurn}`,
+      equation: equation,
+      score: scoreEarned,
+      timestamp: new Date()
+    }
+    setTurnHistory(prev => [...prev, newTurn])
+  }
+
   // Refill the tray with new tiles
   const refillTray = () => {
     const currentCount = trayTiles.length
-    if (currentCount < 8) {
-      const newTiles = generateRandomMathTiles(8 - currentCount)
+    if (currentCount < 8 && tilePool.length > 0) {
+      const tilesToDraw = Math.min(8 - currentCount, tilePool.length)
+      const newTiles = generateRandomMathTiles(tilesToDraw, tilePool)
       setTrayTiles((prev) => [...prev, ...newTiles])
+      
+      // Update tile pool
+      const usedSymbols = newTiles.map(tile => tile.symbol)
+      setTilePool(prev => {
+        const updatedPool = [...prev]
+        for (const symbol of usedSymbols) {
+          const index = updatedPool.indexOf(symbol)
+          if (index > -1) updatedPool.splice(index, 1)
+        }
+        return updatedPool
+      })
     }
   }
 
   // Reset the game
   const resetGame = () => {
-    setTrayTiles(generateRandomMathTiles(8))
+    const initialPool = createAMathTilePool()
+    setTilePool(initialPool)
+    const newTiles = generateRandomMathTiles(8, initialPool)
+    setTrayTiles(newTiles)
+    
+    // Update tile pool to reflect drawn tiles
+    const usedSymbols = newTiles.map(tile => tile.symbol)
+    const updatedPool = [...initialPool]
+    for (const symbol of usedSymbols) {
+      const index = updatedPool.indexOf(symbol)
+      if (index > -1) updatedPool.splice(index, 1)
+    }
+    setTilePool(updatedPool)
+    
     setBoardTiles({})
     setPlacedEquations([])
     setScore(0)
+    setTurnHistory([])
   }
 
   const getBoardSquareType = (position: string): SquareType => {
@@ -606,7 +663,12 @@ export default function AMathGame() {
 
         {/* Scoreboard */}
         <Box sx={{ minWidth: 300 }}>
-          <Scoreboard players={players} currentTurn={currentTurn} />
+          <Scoreboard 
+            players={players} 
+            currentTurn={currentTurn}
+            turnHistory={turnHistory}
+            tilesInBag={tilePool.length}
+          />
         </Box>
       </Box>
     </DndProvider>
