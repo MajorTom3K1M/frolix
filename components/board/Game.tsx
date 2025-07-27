@@ -482,7 +482,7 @@ export default function AMathGame() {
           // End of equation
           if (currentEquation.tiles.length >= 3) {
             const isValid = isValidEquation(currentEquation.tiles)
-            currentEquation.score = isValid ? calculateEquationScore(currentEquation.tiles, currentEquation.positions) : 0
+            currentEquation.score = calculateEquationScore(currentEquation.tiles, currentEquation.positions) // Always calculate score
             currentEquation.isValid = isValid
             equations.push(currentEquation)
           }
@@ -493,7 +493,7 @@ export default function AMathGame() {
       // Check if equation ends at the edge of the board
       if (currentEquation && currentEquation.tiles.length >= 3) {
         const isValid = isValidEquation(currentEquation.tiles)
-        currentEquation.score = isValid ? calculateEquationScore(currentEquation.tiles, currentEquation.positions) : 0
+        currentEquation.score = calculateEquationScore(currentEquation.tiles, currentEquation.positions) // Always calculate score
         currentEquation.isValid = isValid
         equations.push(currentEquation)
       }
@@ -528,7 +528,7 @@ export default function AMathGame() {
           // End of equation
           if (currentEquation.tiles.length >= 3) {
             const isValid = isValidEquation(currentEquation.tiles)
-            currentEquation.score = isValid ? calculateEquationScore(currentEquation.tiles, currentEquation.positions) : 0
+            currentEquation.score = calculateEquationScore(currentEquation.tiles, currentEquation.positions) // Always calculate score
             currentEquation.isValid = isValid
             equations.push(currentEquation)
           }
@@ -539,7 +539,7 @@ export default function AMathGame() {
       // Check if equation ends at the edge of the board
       if (currentEquation && currentEquation.tiles.length >= 3) {
         const isValid = isValidEquation(currentEquation.tiles)
-        currentEquation.score = isValid ? calculateEquationScore(currentEquation.tiles, currentEquation.positions) : 0
+        currentEquation.score = calculateEquationScore(currentEquation.tiles, currentEquation.positions) // Always calculate score
         currentEquation.isValid = isValid
         equations.push(currentEquation)
       }
@@ -547,8 +547,8 @@ export default function AMathGame() {
 
     setPlacedEquations(equations)
 
-    // Calculate total score (only valid equations)
-    const totalScore = equations.filter(eq => eq.isValid).reduce((sum, eq) => sum + eq.score, 0)
+    // Calculate total score (all equations regardless of correctness)
+    const totalScore = equations.reduce((sum, eq) => sum + eq.score, 0)
     setScore(totalScore)
   }
 
