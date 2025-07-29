@@ -114,14 +114,23 @@ export default function AMathGame() {
     timestamp: Date
   }>>([])
   const [tilePool, setTilePool] = useState<string[]>([])
-  const [players, setPlayers] = useState<(Player & { tiles: any[] })[]>([
-    { id: 1, name: "Player 1", score: 0, isActive: false, tiles: [] },
-    { id: 2, name: "Player 2", score: 0, isActive: false, tiles: [] },
+  const [players, setPlayers] = useState<Array<{
+    id: number
+    name: string
+    score: number
+    isActive: boolean
+    passCount: number
+  }>>([
+    { id: 1, name: "Player 1", score: 0, isActive: true, passCount: 0 },
+    { id: 2, name: "Player 2", score: 0, isActive: false, passCount: 0 },
   ])
   const [selectedTilesForSwap, setSelectedTilesForSwap] = useState<string[]>([])
   const [isSwapMode, setIsSwapMode] = useState(false)
-  const [passCount, setPassCount] = useState(0)
   const [gameEnded, setGameEnded] = useState(false)
+  const [currentTurnTiles, setCurrentTurnTiles] = useState<string[]>([])
+  const [gameMessage, setGameMessage] = useState<string>('')
+  const [hasPlacedTileThisTurn, setHasPlacedTileThisTurn] = useState(false)
+  const [isFirstMove, setIsFirstMove] = useState(true)
 
   useEffect(() => {
     const initialPool = createAMathTilePool()
@@ -136,6 +145,7 @@ export default function AMathGame() {
       if (index > -1) updatedPool.splice(index, 1)
     }
     setTilePool(updatedPool)
+    setGameMessage('Player 1\'s turn - Choose an action: Swap, Submit, Pass, or Resign')
   }, []);
 
   const handleTileDrop = useCallback((tile: MathTile & { position?: string }, newPosition: string) => {
@@ -159,6 +169,9 @@ export default function AMathGame() {
         }
         return newTray
       })
+      // Track that a tile was placed from tray this turn
+      setHasPlacedTileThisTurn(true)
+      setCurrentTurnTiles(prev => [...prev, tile.id])
     }
 
     // 3) Finally, add it (or re‑add it) to the new board cell
@@ -201,6 +214,19 @@ export default function AMathGame() {
     detectEquationsAndUpdateScore()
   }, [boardTiles, draggingTileId])
 
+  // Switch to next player
+  const switchTurn = () => {
+    const nextTurn = currentTurn === 1 ? 2 : 1
+    setCurrentTurn(nextTurn)
+    setPlayers(prev => prev.map(player => ({
+      ...player,
+      isActive: player.id === nextTurn
+    })))
+    setHasPlacedTileThisTurn(false)
+    setCurrentTurnTiles([])
+    setGameMessage(`Player ${nextTurn}'s turn - Choose an action: Swap, Submit, Pass, or Resign`)
+  }
+
   // Add turn to history
   const addTurnToHistory = (equation: string, scoreEarned: number) => {
     const newTurn = {
@@ -211,6 +237,84 @@ export default function AMathGame() {
       timestamp: new Date()
     }
     setTurnHistory(prev => [...prev, newTurn])
+  }
+
+  // Check if placement is valid for first move or subsequent moves
+  const isValidPlacement = (newTiles: Record<string, MathTile & { position?: string }>): { valid: boolean, message: string } => {
+    const positions = Object.keys(newTiles)
+    
+    if (positions.length === 0) {
+      return { valid: false, message: 'Place at least one tile on the board' }
+    }
+
+    // Check if tiles are in a straight line
+    const rows = positions.map(pos => parseInt(pos.split('-')[0]))
+    const cols = positions.map(pos => parseInt(pos.split('-')[1]))
+    
+    const isHorizontal = rows.every(row => row === rows[0])
+    const isVertical = cols.every(col => col === cols[0])
+    
+    if (!isHorizontal && !isVertical) {
+      return { valid: false, message: 'All newly placed tiles must be in a straight line' }
+    }
+
+    // Check for gaps in the line
+    if (isHorizontal) {
+      const sortedCols = cols.sort((a, b) => a - b)
+      for (let i = 1; i < sortedCols.length; i++) {
+        if (sortedCols[i] - sortedCols[i-1] > 1) {
+          // Check if there are existing tiles filling the gap
+          for (let col = sortedCols[i-1] + 1; col < sortedCols[i]; col++) {
+            const gapPos = `${rows[0]}-${col}`
+            if (!boardTiles[gapPos]) {
+              return { valid: false, message: 'No gaps allowed between tiles in an equation' }
+            }
+          }
+        }
+      }
+    } else {
+      const sortedRows = rows.sort((a, b) => a - b)
+      for (let i = 1; i < sortedRows.length; i++) {
+        if (sortedRows[i] - sortedRows[i-1] > 1) {
+          // Check if there are existing tiles filling the gap
+          for (let row = sortedRows[i-1] + 1; row < sortedRows[i]; row++) {
+            const gapPos = `${row}-${cols[0]}`
+            if (!boardTiles[gapPos]) {
+              return { valid: false, message: 'No gaps allowed between tiles in an equation' }
+            }
+          }
+        }
+      }
+    }
+
+    // First move must cover center star (7-7)
+    if (isFirstMove) {
+      if (!positions.includes('7-7')) {
+        return { valid: false, message: 'First move must cover the center star' }
+      }
+    } else {
+      // Subsequent moves must touch at least one existing tile
+      let touchesExisting = false
+      for (const pos of positions) {
+        const [row, col] = pos.split('-').map(Number)
+        const adjacentPositions = [
+          `${row-1}-${col}`, `${row+1}-${col}`,
+          `${row}-${col-1}`, `${row}-${col+1}`
+        ]
+        for (const adjPos of adjacentPositions) {
+          if (boardTiles[adjPos] && !positions.includes(adjPos)) {
+            touchesExisting = true
+            break
+          }
+        }
+        if (touchesExisting) break
+      }
+      if (!touchesExisting) {
+        return { valid: false, message: 'New tiles must connect to existing tiles on the board' }
+      }
+    }
+
+    return { valid: true, message: '' }
   }
 
   // Toggle tile selection for swap
@@ -224,7 +328,10 @@ export default function AMathGame() {
 
   // Swap selected tiles
   const handleSwapTiles = () => {
-    if (selectedTilesForSwap.length === 0 || tilePool.length < 5) return
+    if (selectedTilesForSwap.length === 0 || tilePool.length < 5) {
+      setGameMessage('Cannot swap: need at least 5 tiles in bag and tiles selected')
+      return
+    }
 
     // Get selected tiles and their symbols
     const tilesToSwap = selectedTilesForSwap.map(tileId => 
@@ -273,52 +380,116 @@ export default function AMathGame() {
     setTilePool(finalPool)
     setSelectedTilesForSwap([])
     setIsSwapMode(false)
-    setPassCount(0) // Reset pass count when action is taken
     
-    // Add to turn history
+    // Reset player pass counts when action is taken
+    setPlayers(prev => prev.map(player => ({ ...player, passCount: 0 })))
+    
+    // Add to turn history and switch turn
     addTurnToHistory(`Swapped ${tilesToSwap.length} tiles`, 0)
+    switchTurn()
   }
 
   // Submit equation functionality
   const handleSubmitEquation = () => {
-    // Check if there are tiles placed on board in current turn
-    const currentTurnTiles = Object.values(boardTiles).filter(tile => 
-      // Add logic to track current turn tiles if needed
-      true
-    )
-
-    if (currentTurnTiles.length === 0) {
-      alert("Place tiles on the board to form an equation first!")
+    // Check if player has placed at least one new tile this turn
+    if (!hasPlacedTileThisTurn) {
+      setGameMessage('You must place at least one new tile before submitting!')
       return
     }
 
-    // The equation detection already runs automatically
-    // This button confirms the turn and triggers scoring
-    detectEquationsAndUpdateScore()
-    setPassCount(0) // Reset pass count when action is taken
+    // Get only the tiles placed this turn
+    const newlyPlacedTiles: Record<string, MathTile & { position?: string }> = {}
+    currentTurnTiles.forEach(tileId => {
+      const position = Object.keys(boardTiles).find(pos => boardTiles[pos].id === tileId)
+      if (position) {
+        newlyPlacedTiles[position] = boardTiles[position]
+      }
+    })
+
+    // Validate placement
+    const placementCheck = isValidPlacement(newlyPlacedTiles)
+    if (!placementCheck.valid) {
+      setGameMessage(placementCheck.message)
+      return
+    }
+
+    // Check if equations formed are mathematically valid
+    const currentEquations = [...placedEquations]
     
-    // Refill tray
+    // Find equations that include newly placed tiles
+    const validEquationsFormed = currentEquations.filter(eq => {
+      return eq.positions.some((pos: string) => Object.keys(newlyPlacedTiles).includes(pos))
+    })
+
+    if (validEquationsFormed.length === 0) {
+      setGameMessage('No valid equations found. Try again or choose another action.')
+      return
+    }
+
+    // Check mathematical validity
+    const hasValidEquation = validEquationsFormed.some((eq: any) => eq.isValid)
+    if (!hasValidEquation) {
+      setGameMessage('Invalid equation! The equation must be mathematically correct. Try again or choose another action.')
+      return
+    }
+
+    // Calculate score for this turn
+    const turnScore = validEquationsFormed.reduce((sum: number, eq: any) => sum + eq.score, 0)
+    
+    // Update player score
+    setPlayers(prev => prev.map(player => 
+      player.id === currentTurn 
+        ? { ...player, score: player.score + turnScore, passCount: 0 }
+        : { ...player, passCount: 0 }
+    ))
+
+    // Add to turn history
+    const equationStrings = validEquationsFormed.map((eq: any) => eq.expression).join(', ')
+    addTurnToHistory(equationStrings, turnScore)
+    
+    // Refill tray and mark first move as complete
     refillTray()
+    setIsFirstMove(false)
+    setGameMessage(`Equation submitted! Player ${currentTurn} scored ${turnScore} points.`)
+    
+    // Switch turn
+    switchTurn()
   }
 
   // Pass turn functionality
   const handlePass = () => {
-    const newPassCount = passCount + 1
-    setPassCount(newPassCount)
+    // Update current player's pass count
+    setPlayers(prev => prev.map(player => 
+      player.id === currentTurn 
+        ? { ...player, passCount: player.passCount + 1 }
+        : player
+    ))
     
-    // Check for game end (6 consecutive passes)
-    if (newPassCount >= 6) {
+    // Check if both players have passed 3 times each consecutively
+    const updatedPlayers = players.map(player => 
+      player.id === currentTurn 
+        ? { ...player, passCount: player.passCount + 1 }
+        : player
+    )
+    
+    const allPlayersPassedThrice = updatedPlayers.every(player => player.passCount >= 3)
+    
+    if (allPlayersPassedThrice) {
       setGameEnded(true)
-      addTurnToHistory("Game ended - consecutive passes", 0)
+      addTurnToHistory("Game ended - both players passed 3 times", 0)
+      setGameMessage('Game ended: Both players passed 3 times consecutively')
     } else {
       addTurnToHistory("Passed turn", 0)
+      setGameMessage(`Player ${currentTurn} passed their turn`)
+      switchTurn()
     }
   }
 
   // Resign functionality
   const handleResign = () => {
     setGameEnded(true)
-    addTurnToHistory("Resigned", 0)
+    addTurnToHistory(`Player ${currentTurn} resigned`, 0)
+    setGameMessage(`Player ${currentTurn} resigned. Player ${currentTurn === 1 ? 2 : 1} wins!`)
   }
 
   // Refill the tray with new tiles
@@ -382,8 +553,16 @@ export default function AMathGame() {
     setTurnHistory([])
     setSelectedTilesForSwap([])
     setIsSwapMode(false)
-    setPassCount(0)
     setGameEnded(false)
+    setCurrentTurn(1)
+    setPlayers([
+      { id: 1, name: "Player 1", score: 0, isActive: true, passCount: 0 },
+      { id: 2, name: "Player 2", score: 0, isActive: false, passCount: 0 },
+    ])
+    setCurrentTurnTiles([])
+    setHasPlacedTileThisTurn(false)
+    setIsFirstMove(true)
+    setGameMessage('Player 1\'s turn - Choose an action: Swap, Submit, Pass, or Resign')
   }
 
   const getBoardSquareType = (position: string): SquareType => {
@@ -794,6 +973,37 @@ export default function AMathGame() {
                 onTileSelect={toggleTileSelection}
               />
               
+              {/* Game Status Message */}
+              {gameMessage && (
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    mt: 1, 
+                    p: 1, 
+                    bgcolor: 'info.light', 
+                    color: 'info.contrastText',
+                    borderRadius: 1,
+                    textAlign: 'center',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  {gameMessage}
+                </Typography>
+              )}
+              
+              {/* Current Player Indicator */}
+              <Typography 
+                variant="h6" 
+                sx={{ 
+                  mt: 1, 
+                  color: 'primary.main',
+                  fontWeight: 'bold',
+                  textAlign: 'center'
+                }}
+              >
+                {players.find(p => p.isActive)?.name}'s Turn
+              </Typography>
+              
               {/* Game Action Buttons */}
               <Box sx={{ mt: 2, display: "flex", gap: 1, flexWrap: "wrap", justifyContent: "center" }}>
                 <Button
@@ -882,7 +1092,7 @@ export default function AMathGame() {
         {/* Scoreboard */}
         <Box sx={{ minWidth: 300 }}>
           <Scoreboard 
-            players={players} 
+            players={players.map(p => ({ ...p, tiles: [] }))} 
             currentTurn={currentTurn}
             turnHistory={turnHistory}
             tilesInBag={tilePool.length}
@@ -900,14 +1110,22 @@ export default function AMathGame() {
           <Box sx={{ mt: 2 }}>
             <Typography variant="h6">Final Scores:</Typography>
             {players.map(player => (
-              <Typography key={player.id} variant="body1">
-                {player.name}: {player.score} points
+              <Typography key={player.id} variant="body1" sx={{
+                fontWeight: player.score === Math.max(...players.map(p => p.score)) ? 'bold' : 'normal',
+                color: player.score === Math.max(...players.map(p => p.score)) ? 'success.main' : 'inherit'
+              }}>
+                {player.name}: {player.score} points {player.score === Math.max(...players.map(p => p.score)) && '🏆'}
               </Typography>
             ))}
           </Box>
-          {passCount >= 6 && (
+          {players.every(p => p.passCount >= 3) && (
             <Alert severity="info" sx={{ mt: 2 }}>
-              Game ended due to consecutive passes.
+              Game ended: Both players passed 3 times consecutively.
+            </Alert>
+          )}
+          {turnHistory.some(turn => turn.equation.includes('resigned')) && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              Game ended due to resignation.
             </Alert>
           )}
         </DialogContent>
