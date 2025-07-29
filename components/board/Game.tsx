@@ -104,6 +104,7 @@ export default function AMathGame() {
   const [trayTiles, setTrayTiles] = useState<(MathTile | null)[]>(Array(8).fill(null))
   const [boardTiles, setBoardTiles] = useState<Record<string, MathTile & { position?: string }>>({})
   const [placedEquations, setPlacedEquations] = useState<any[]>([])
+  const [currentTurnEquations, setCurrentTurnEquations] = useState<any[]>([])
   const [draggingTileId, setDraggingTileId] = useState<string | null>(null)
   const [currentTurn, setCurrentTurn] = useState(1)
   const [turnHistory, setTurnHistory] = useState<Array<{
@@ -224,6 +225,8 @@ export default function AMathGame() {
     })))
     setHasPlacedTileThisTurn(false)
     setCurrentTurnTiles([])
+    // Clear current turn equations when switching turns
+    setCurrentTurnEquations([])
     setGameMessage(`Player ${nextTurn}'s turn - Choose an action: Swap, Submit, Pass, or Resign`)
   }
 
@@ -384,6 +387,11 @@ export default function AMathGame() {
     // Reset player pass counts when action is taken
     setPlayers(prev => prev.map(player => ({ ...player, passCount: 0 })))
     
+    // Clear current turn equations and tracking
+    setCurrentTurnEquations([])
+    setCurrentTurnTiles([])
+    setHasPlacedTileThisTurn(false)
+    
     // Add to turn history and switch turn
     addTurnToHistory(`Swapped ${tilesToSwap.length} tiles`, 0)
     switchTurn()
@@ -447,6 +455,11 @@ export default function AMathGame() {
     const equationStrings = validEquationsFormed.map((eq: any) => eq.expression).join(', ')
     addTurnToHistory(equationStrings, turnScore)
     
+    // Clear current turn equations and tracking
+    setCurrentTurnEquations([])
+    setCurrentTurnTiles([])
+    setHasPlacedTileThisTurn(false)
+    
     // Refill tray and mark first move as complete
     refillTray()
     setIsFirstMove(false)
@@ -481,12 +494,21 @@ export default function AMathGame() {
     } else {
       addTurnToHistory("Passed turn", 0)
       setGameMessage(`Player ${currentTurn} passed their turn`)
+      // Clear current turn equations and tracking
+      setCurrentTurnEquations([])
+      setCurrentTurnTiles([])
+      setHasPlacedTileThisTurn(false)
       switchTurn()
     }
   }
 
   // Resign functionality
   const handleResign = () => {
+    // Clear current turn equations and tracking
+    setCurrentTurnEquations([])
+    setCurrentTurnTiles([])
+    setHasPlacedTileThisTurn(false)
+    
     setGameEnded(true)
     addTurnToHistory(`Player ${currentTurn} resigned`, 0)
     setGameMessage(`Player ${currentTurn} resigned. Player ${currentTurn === 1 ? 2 : 1} wins!`)
@@ -549,11 +571,15 @@ export default function AMathGame() {
     
     setBoardTiles({})
     setPlacedEquations([])
+    setCurrentTurnEquations([])
     setScore(0)
     setTurnHistory([])
     setSelectedTilesForSwap([])
     setIsSwapMode(false)
     setGameEnded(false)
+    setCurrentTurnTiles([])
+    setHasPlacedTileThisTurn(false)
+    setIsFirstMove(true)
     setCurrentTurn(1)
     setPlayers([
       { id: 1, name: "Player 1", score: 0, isActive: true, passCount: 0 },
@@ -925,6 +951,21 @@ export default function AMathGame() {
     }
 
     setPlacedEquations(equations)
+    
+    // Update current turn equations - only show equations that include tiles placed this turn
+    if (hasPlacedTileThisTurn) {
+      const newTurnEquations = equations.filter(eq => {
+        // Check if any position in this equation has a tile placed this turn
+        return eq.positions.some((pos: string) => {
+          const tile = boardTiles[pos]
+          return tile && currentTurnTiles.includes(tile.id)
+        })
+      })
+      setCurrentTurnEquations(newTurnEquations)
+    } else {
+      // No tiles placed this turn, clear current turn equations
+      setCurrentTurnEquations([])
+    }
 
     // Calculate total score (all equations regardless of correctness)
     const totalScore = equations.reduce((sum, eq) => sum + eq.score, 0)
@@ -949,7 +990,7 @@ export default function AMathGame() {
           <Board
             boardTiles={boardTiles}
             onTileDrop={handleTileDrop}
-            placedWords={placedEquations}
+            placedWords={currentTurnEquations}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           />
@@ -1009,7 +1050,13 @@ export default function AMathGame() {
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={() => setIsSwapMode(!isSwapMode)}
+                  onClick={() => {
+                    setIsSwapMode(!isSwapMode)
+                    if (isSwapMode) {
+                      // Clear current turn equations when canceling swap
+                      setCurrentTurnEquations([])
+                    }
+                  }}
                   sx={{ 
                     bgcolor: isSwapMode ? "primary.light" : "transparent",
                     color: isSwapMode ? "white" : "primary.main"
