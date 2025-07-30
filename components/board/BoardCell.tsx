@@ -16,6 +16,7 @@ interface BoardCellProps {
     onDrop: (tile: LetterTile | MathTile, position: string) => void;
     onDragStart: (tileId: string) => void;
     onDragEnd: () => void;
+    isSubmittedEquation?: boolean;
 }
 
 const squareColors: Record<SquareType, string> = {
@@ -50,7 +51,7 @@ const TILE_BASE_STYLES: React.CSSProperties = {
 }
 
 function Cell({
-    squareType, position, cellSize, tile, word, canDrop, onDrop, onDragStart, onDragEnd
+    squareType, position, cellSize, tile, word, canDrop, onDrop, onDragStart, onDragEnd, isSubmittedEquation
 }: Readonly<BoardCellProps>) {
     const handleDrop = useCallback(
         (item: LetterTile | MathTile) => {
@@ -116,6 +117,7 @@ function Cell({
                     styles={TILE_BASE_STYLES}
                     onDragStart={onDragStart}
                     onDragEnd={onDragEnd}
+                    isDraggable={!isSubmittedEquation}
                 />
             )}
         </Box>

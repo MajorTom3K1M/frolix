@@ -275,9 +275,10 @@ interface ScrabbleBoardProps {
     placedWords: any[]
     onDragStart: (tileId: string) => void
     onDragEnd: () => void
+    submittedEquationPositions?: Set<string>
 }
 
-export default function Board({ boardTiles, onTileDrop, placedWords, onDragStart, onDragEnd }: ScrabbleBoardProps) {
+export default function Board({ boardTiles, onTileDrop, placedWords, onDragStart, onDragEnd, submittedEquationPositions }: ScrabbleBoardProps) {
     // Calculate the responsive size for the board
     const calculateBoardSize = () => {
         // Use viewport width for responsiveness
@@ -330,6 +331,7 @@ export default function Board({ boardTiles, onTileDrop, placedWords, onDragStart
                         onDrop={onTileDrop}
                         onDragStart={onDragStart}
                         onDragEnd={onDragEnd}
+                        isSubmittedEquation={submittedEquationPositions?.has(position) || false}
                     />
                 );
             })}

@@ -132,6 +132,7 @@ export default function AMathGame() {
   const [gameMessage, setGameMessage] = useState<string>('')
   const [hasPlacedTileThisTurn, setHasPlacedTileThisTurn] = useState(false)
   const [isFirstMove, setIsFirstMove] = useState(true)
+  const [submittedEquationPositions, setSubmittedEquationPositions] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const initialPool = createAMathTilePool()
@@ -455,6 +456,15 @@ export default function AMathGame() {
     const equationStrings = validEquationsFormed.map((eq: any) => eq.expression).join(', ')
     addTurnToHistory(equationStrings, turnScore)
     
+    // Mark positions of submitted equations as non-draggable
+    const newSubmittedPositions = new Set(submittedEquationPositions)
+    validEquationsFormed.forEach((eq: any) => {
+      eq.positions.forEach((pos: string) => {
+        newSubmittedPositions.add(pos)
+      })
+    })
+    setSubmittedEquationPositions(newSubmittedPositions)
+    
     // Clear current turn equations and tracking
     setCurrentTurnEquations([])
     setCurrentTurnTiles([])
@@ -588,6 +598,7 @@ export default function AMathGame() {
     setCurrentTurnTiles([])
     setHasPlacedTileThisTurn(false)
     setIsFirstMove(true)
+    setSubmittedEquationPositions(new Set())
     setGameMessage('Player 1\'s turn - Choose an action: Swap, Submit, Pass, or Resign')
   }
 
@@ -993,6 +1004,7 @@ export default function AMathGame() {
             placedWords={currentTurnEquations}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
+            submittedEquationPositions={submittedEquationPositions}
           />
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>

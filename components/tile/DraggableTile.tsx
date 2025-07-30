@@ -12,22 +12,25 @@ interface DraggableTileProps {
     height?: number;
     onDragStart?: (tileId: string) => void;
     onDragEnd?: () => void;
+    isDraggable?: boolean;
 }
 
-const DraggableTile = ({ tile, styles, width, height, onDragStart, onDragEnd }: DraggableTileProps) => {
+const DraggableTile = ({ tile, styles, width, height, onDragStart, onDragEnd, isDraggable = true }: DraggableTileProps) => {
     const [{ isDragging }, drag, preview] = useDrag(() => ({
         type: "MATH_TILE",
         item: () => {
+            if (!isDraggable) return null;
             onDragStart?.(tile.id);
             return tile;
         },
         end: () => {
             onDragEnd?.();
         },
+        canDrag: () => isDraggable,
         collect: (monitor) => ({
             isDragging: !!monitor.isDragging(),
         }),
-    }), [tile, onDragStart, onDragEnd]);
+    }), [tile, onDragStart, onDragEnd, isDraggable]);
 
     useEffect(() => {
         preview(getEmptyImage(), { captureDraggingState: true })
@@ -43,7 +46,9 @@ const DraggableTile = ({ tile, styles, width, height, onDragStart, onDragEnd }: 
     const mergedStyles: SxProps = useMemo(() => ({
         ...styles,
         opacity: isDragging ? 0 : 1,
-    }), [styles, isDragging]);
+        cursor: isDraggable ? 'grab' : 'not-allowed',
+        filter: isDraggable ? 'none' : 'brightness(0.9)',
+    }), [styles, isDragging, isDraggable]);
 
     return (
         <Tile
