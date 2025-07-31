@@ -1,5 +1,7 @@
 import { Box, Paper, Typography, Avatar, Chip, Divider, Accordion, AccordionSummary, AccordionDetails } from "@mui/material"
 import { Crown, User, History, Package, ChevronDown } from "lucide-react"
+import { MathTile } from "@/types/tiles"
+import MiniTile from "@/components/tile/MiniTile"
 
 interface TurnHistoryEntry {
     turn: number
@@ -7,6 +9,7 @@ interface TurnHistoryEntry {
     equation: string
     score: number
     timestamp: Date
+    tiles?: MathTile[]
 }
 
 interface ScoreboardProps {
@@ -164,9 +167,17 @@ export default function Scoreboard({
                                             sx={{ fontSize: "0.7rem" }}
                                         />
                                     </Box>
-                                    <Typography variant="body2" color="text.secondary" sx={{ fontFamily: "monospace" }}>
-                                        {entry.equation}
-                                    </Typography>
+                                    {entry.tiles && entry.tiles.length > 0 ? (
+                                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mb: 1 }}>
+                                            {entry.tiles.map((tile, tileIndex) => (
+                                                <MiniTile key={`${entry.turn}-${tileIndex}`} tile={tile} size={18} />
+                                            ))}
+                                        </Box>
+                                    ) : (
+                                        <Typography variant="body2" color="text.secondary" sx={{ fontFamily: "monospace" }}>
+                                            {entry.equation}
+                                        </Typography>
+                                    )}
                                     <Typography variant="caption" color="text.secondary">
                                         {entry.timestamp.toLocaleTimeString()}
                                     </Typography>

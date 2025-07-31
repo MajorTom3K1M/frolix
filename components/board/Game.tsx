@@ -113,6 +113,7 @@ export default function AMathGame() {
     equation: string
     score: number
     timestamp: Date
+    tiles?: MathTile[]
   }>>([])
   const [tilePool, setTilePool] = useState<string[]>([])
   const [players, setPlayers] = useState<Array<{
@@ -232,13 +233,14 @@ export default function AMathGame() {
   }
 
   // Add turn to history
-  const addTurnToHistory = (equation: string, scoreEarned: number) => {
+  const addTurnToHistory = (equation: string, scoreEarned: number, tiles?: MathTile[]) => {
     const newTurn = {
       turn: turnHistory.length + 1,
       player: `Player ${currentTurn}`,
       equation: equation,
       score: scoreEarned,
-      timestamp: new Date()
+      timestamp: new Date(),
+      tiles: tiles
     }
     setTurnHistory(prev => [...prev, newTurn])
   }
@@ -454,7 +456,8 @@ export default function AMathGame() {
 
     // Add to turn history
     const equationStrings = validEquationsFormed.map((eq: any) => eq.expression).join(', ')
-    addTurnToHistory(equationStrings, turnScore)
+    const allTilesUsed = validEquationsFormed.flatMap((eq: any) => eq.tiles || [])
+    addTurnToHistory(equationStrings, turnScore, allTilesUsed)
     
     // Mark positions of submitted equations as non-draggable
     const newSubmittedPositions = new Set(submittedEquationPositions)
